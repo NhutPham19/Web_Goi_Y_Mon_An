@@ -1,0 +1,31 @@
+# Web framework
+Flask==3.0.3
+Flask-CORS==4.0.1
+Flask-JWT-Extended==4.6.0
+Flask-Migrate==4.0.7
+Flask-SQLAlchemy==3.1.1
+
+# Database
+SQLAlchemy==2.0.36
+psycopg2-binary==2.9.10
+
+# Auth
+bcrypt==4.2.0
+
+# Config
+python-dotenv==1.0.1
+
+# Cloud Storage
+cloudinary==1.41.0
+
+# ML
+scikit-learn==1.5.2
+pandas==2.2.3
+numpy==1.26.4
+joblib==1.4.2
+
+# ML — Collaborative Filtering (cài sau khi có đủ ratings)
+# scikit-surprise==1.1.4
+
+# Deploy
+gunicorn==23.0.0

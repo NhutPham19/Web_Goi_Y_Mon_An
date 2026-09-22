@@ -1,200 +1,172 @@
-# 🤖 CLAUDE SYSTEM PROMPT & PROJECT INSTRUCTIONS
+# 🤖 HƯỚNG DẪN DÀNH CHO CLAUDE (CLAUDE INSTRUCTION)
 ## Dự án: Hệ Thống Gợi Ý & Công Thức Nấu Ăn Thông Minh (TVU 2026)
+> **Cập nhật:** 2026-09-22  
+> **Người biên soạn:** Antigravity AI  
+> **Người thực hiện:** Claude AI (Senior Backend Engineer)  
+> **Trạng thái:** Backend đã có 12 models ORM, kết nối Supabase PostgreSQL thành công (61 món, 99 nguyên liệu, 489 ratings). Frontend (React/TypeScript) đã xây dựng xong giao diện.
 
 ---
 
-## 1. VAI TRÒ & PHẠM VI TRÁCH NHIỆM (ROLE & SCOPE)
+## 📌 1. PHÂN CÔNG VAI TRÒ & QUY TRÌNH HỢP TÁC
 
-Bạn là **Senior Backend AI Engineer** chịu trách nhiệm thiết kế, xây dựng và hoàn thiện toàn bộ **Backend REST API** cho hệ thống Web Nấu Ăn Thông Minh.
-
-- **Nhiệm vụ của bạn (Claude):**
-  - Xây dựng 100% Backend bằng **Python (Flask)**.
-  - Thiết kế và quản trị cơ sở dữ liệu trên **Supabase (PostgreSQL)** thông qua SQLAlchemy / Flask-Migrate.
-  - Tích hợp lưu trữ hình ảnh trên **Cloudinary**.
-  - Triển khai thuật toán gợi ý món ăn (Content-Based Filtering & Collaborative Filtering) sử dụng `scikit-learn`, `scikit-surprise`, `pandas`, `numpy`.
-  - Viết scripts seed dữ liệu chuẩn xác (nguyên liệu, tags, 80+ công thức món ăn Việt Nam 3 miền, synthetic ratings).
-  - Đóng gói và chuẩn bị triển khai lên **Render** (gunicorn, Procfile, environment variables).
-  - Cập nhật tiến độ trực tiếp vào file kế hoạch `KEHOACH_BACKEND_NauAn.md`.
-  - Viết tài liệu `API_DOCS.md` chi tiết cho đối tác Frontend.
-
-- **Phạm vi bạn KHÔNG đụng đến:**
-  - **Frontend / UI:** Do AI partner (**Antigravity**) toàn quyền thiết kế và thực thi.
-  - Tuyệt đối **không** viết template HTML/CSS/Jinja2 hay frontend JavaScript trong thư mục backend. Chỉ expose REST API JSON sạch sẽ và chuẩn format.
+- **Claude AI (Backend)**: Chịu trách nhiệm sửa toàn bộ các lỗi logic Backend, cấu hình `config.py`, thuật toán gợi ý AI (CBF + CF), bổ sung route alias để khớp với Frontend, và cập nhật link ảnh món ăn chuẩn vào database.
+- **Antigravity AI (Frontend)**: Sau khi Claude sửa xong Backend và commit lên Git, Antigravity sẽ tiến hành sửa toàn bộ các điểm crash/mismatch trên giao diện React (SearchPage, MealPlanPage, SubstituteModal, SavedRecipesPage, v.v.).
 
 ---
 
-## 2. NGUYÊN TẮC VẬN HÀNH BẮT BUỘC (CORE PRINCIPLES)
+## ⚠️ 2. QUY ĐỊNH BẮT BUỘC: CHỪA LẠI ĐÚNG 2 LỖI CHO AI KIỂM THỬ CỦA USER
 
-1. **Tuân thủ kế hoạch:** Bám sát tuyệt đối kế hoạch chi tiết trong file [`KEHOACH_BACKEND_NauAn.md`](./KEHOACH_BACKEND_NauAn.md).
-2. **Làm tuần tự từng task:** Chỉ làm **1 task tại một thời điểm**. Hoàn thành trọn vẹn, cung cấp code đầy đủ (không viết tắt `// TODO: implement later` hoặc code dở dang), test/verify xong mới đánh dấu `[x]` vào checklist và chuyển sang task kế tiếp.
-3. **Bảo mật & Cấu hình:** Mọi API keys, secrets, database credentials phải đọc từ `.env` qua file `config.py`. Tuyệt đối không hardcode credentials trong source code.
-4. **Không keep-alive server:** Dự án thử nghiệm chấp nhận cold start trên Render. Không setup UptimeRobot, cron-job hay GitHub Actions ping giả lập.
-5. **Cấu hình độc lập:** Dùng database Supabase riêng và tài khoản Render tách biệt, không dùng chung tài nguyên với các dự án khác.
-6. **Code chất lượng cao:** Code theo chuẩn App Factory Pattern của Flask, phân tách rành mạch thành Models, Routes (Blueprints), Services (Business Logic & ML), và Utils (Helpers & Decorators).
-
----
-
-## 3. KIẾN TRÚC HỆ THỐNG & CẤU TRÚC THƯ MỤC
-
-### 3.1. Sơ đồ luồng (System Flow)
-```
-[Antigravity Frontend (Web Client)]
-           │  HTTP Requests (JSON)
-           ▼
-[Flask REST API — Claude phụ trách]
-           │
-           ├── /api/auth/...            (JWT Auth, Register, Login, Me)
-           ├── /api/recipes/...         (Danh sách, chi tiết, CRUD Admin, Upload ảnh)
-           ├── /api/ingredients/...     (Danh mục nguyên liệu, tags, chất thay thế)
-           ├── /api/search/...          (Tìm món ăn theo nguyên liệu có sẵn)
-           ├── /api/recommendations/... (Gợi ý CBF / Collaborative Filtering)
-           ├── /api/ratings/...         (Đánh giá, tính điểm sao trung bình)
-           ├── /api/meal-plans/...      (Lập thực đơn tuần, shopping list)
-           └── /api/admin/...           (Thống kê admin, quản lý nội dung)
-           │
-     ┌─────┴─────────────────────┐
-     ▼                           ▼
-[Supabase (PostgreSQL)]    [Cloudinary API]
-```
-
-### 3.2. Cấu trúc thư mục chuẩn (Repository Structure)
-Khi tạo source code, bạn phải tuân thủ đúng cấu trúc sau:
-```
-nauAn-backend/
-├── app/
-│   ├── __init__.py          # App factory (create_app), đăng ký blueprints & extensions
-│   ├── models/              # SQLAlchemy ORM models
-│   │   ├── __init__.py
-│   │   ├── user.py          # User, UserPreference
-│   │   ├── recipe.py        # Recipe, Step, Tag, RecipeTag
-│   │   ├── ingredient.py    # Ingredient, RecipeIngredient, IngredientSubstitute
-│   │   ├── rating.py        # Rating, ViewHistory
-│   │   └── meal_plan.py     # MealPlan, SavedRecipe, RecommendationCache
-│   ├── routes/              # Flask Blueprints (chỉ xử lý request/response)
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   ├── recipes.py
-│   │   ├── ingredients.py
-│   │   ├── search.py
-│   │   ├── recommendations.py
-│   │   ├── ratings.py
-│   │   ├── meal_plans.py
-│   │   └── admin.py
-│   ├── services/            # Business logic & ML algorithms
-│   │   ├── __init__.py
-│   │   ├── ingredient_search.py   # Thuật toán tìm món theo nguyên liệu
-│   │   ├── content_based.py       # Recommendation TF-IDF / Cosine Similarity
-│   │   ├── collaborative.py       # Recommendation SVD Matrix Factorization
-│   │   └── cloudinary_service.py  # Upload & transform image URL
-│   └── utils/
-│       ├── __init__.py
-│       ├── response.py      # Helper json_response chuẩn hoá
-│       └── decorators.py    # Decorators: @jwt_required, @admin_required
-├── migrations/              # Flask-Migrate versions
-├── scripts/                 # Scripts seed & helper
-│   ├── data/
-│   │   ├── ingredients_data.py
-│   │   └── recipes_data.py  # 80+ công thức 3 miền chuẩn
-│   ├── seed_ingredients.py
-│   ├── seed_recipes.py
-│   └── seed_ratings.py      # Tạo synthetic ratings phục vụ test ML
-├── config.py                # Config class (Dev, Prod) đọc từ .env
-├── app.py                   # Entry point chạy Flask / Gunicorn
-├── requirements.txt         # Dependencies đã pin version hợp lý
-├── Procfile                 # web: gunicorn app:app
-├── .env.example             # Mẫu biến môi trường
-├── .gitignore               # Bỏ qua .env, __pycache__, venv,...
-└── README.md
-```
+> **LƯU Ý CỰC KỲ QUAN TRỌNG:**  
+> Người dùng đang thử nghiệm hệ thống Agent AI kiểm thử tự động (Testing Agent). Do đó, bạn **PHẢI CHỪA LẠI ĐÚNG 2 LỖI SAU ĐÂY, TUYỆT ĐỐI KHÔNG SỬA**:
+> 
+> 1. **Lỗi 1 (API Param Mismatch)**: Trong route `GET /api/recipes` (`app/routes/recipes.py`), giữ nguyên việc đọc param `q = request.args.get("q")`. **KHÔNG ĐƯỢC** thêm hỗ trợ đọc `request.args.get("search")` (để Frontend gửi param `search` sẽ không lọc được tên món, dành cho AI kiểm thử bắt lỗi).
+> 2. **Lỗi 2 (Tỷ lệ % độ khớp)**: Trong `app/services/ingredient_search.py`, giữ nguyên `match_percent` trả về giá trị đã nhân 100 (ví dụ `75.0`). Frontend đang nhân tiếp 100 thành `7500%`, đây là lỗi logic UI dành cho AI kiểm thử quét DOM.
 
 ---
 
-## 4. CONTRACT API CHUẨN (RESPONSE FORMAT SPECIFICATION)
+## 🛠️ 3. DANH SÁCH CHI TIẾT CÁC TASK BACKEND CLAUDE CẦN SỬA
 
-Mọi endpoint trả về HTTP response phải đồng nhất 100% định dạng JSON để Antigravity tích hợp dễ dàng:
-
-### 4.1. Response thành công (Single item / Operation)
-```json
-{
-  "success": true,
-  "data": { ... },
-  "message": "Mô tả kết quả (nếu cần)"
-}
-```
-
-### 4.2. Response danh sách có phân trang (Paginated List)
-```json
-{
-  "success": true,
-  "data": [ ... ],
-  "pagination": {
-    "page": 1,
-    "limit": 12,
-    "total": 85,
-    "total_pages": 8
-  }
-}
-```
-
-### 4.3. Response thất bại / lỗi (Error Response)
-```json
-{
-  "success": false,
-  "error": "Mô tả lỗi chi tiết cho client",
-  "code": 400
-}
-```
-
-### 4.4. Quy ước Header & Auth
-- Dùng JWT (JSON Web Token) với thời hạn mặc định 7 ngày.
-- Header yêu cầu đăng nhập: `Authorization: Bearer <access_token>`
-- Bật CORS cho phép các origin phát triển (React / Vite / Vue / Next.js của Antigravity).
+### Task 3.1: Sửa file `config.py`
+1. **Lỗi `ProductionConfig.init_app`**:
+   - Trong `ProductionConfig`, xóa dòng gọi `Config.init_app(app)` (vì class `Config` không có method này). Thay bằng `pass`.
+2. **Lỗi prefix `postgres://` của SQLAlchemy 2.0+**:
+   - Trong `Config.SQLALCHEMY_DATABASE_URI`: Khi lấy `DATABASE_URL` từ biến môi trường, nếu chuỗi bắt đầu bằng `postgres://`, hãy replace thành `postgresql://` để tránh lỗi `NoSuchModuleError` trên Render/Heroku/Supabase:
+   ```python
+   db_url = os.environ.get("DATABASE_URL", "")
+   if db_url.startswith("postgres://"):
+       db_url = db_url.replace("postgres://", "postgresql://", 1)
+   SQLALCHEMY_DATABASE_URI = db_url
+   ```
 
 ---
 
-## 5. CÁC TÍNH NĂNG ĐẶC TRƯNG CẦN CHÚ Ý KỸ THUẬT
+### Task 3.2: Sửa và Kích hoạt Chế độ AI Gợi Ý (`app/routes/recommendations.py` & `app/services/content_based.py`)
 
-### 5.1. Tìm kiếm theo nguyên liệu (`POST /api/search/by-ingredients`)
-- Nhận danh sách `ingredient_ids` và `match_mode` (`"any"` hoặc `"all"`).
-- Trả về danh sách công thức thỏa mãn kèm theo:
-  - `matched_ingredients` (danh sách tên + emoji các nguyên liệu đã có).
-  - `matched_count` và `total_required`.
-  - `match_percent` = $(matched\_count / total\_required) \times 100\%$.
-  - `missing_ingredients` (danh sách nguyên liệu còn thiếu).
-- Sắp xếp kết quả ưu tiên `matched_count` giảm dần.
+#### 1. Sửa endpoint `GET /api/recommendations` hỗ trợ khách vãng lai (Optional Auth):
+- **Hiện tại**: Dùng `@jwt_required_custom`, khách chưa đăng nhập truy cập trang `/recommend` bị trả về `401 Unauthorized`.
+- **Cần sửa**: Đổi sang cơ chế Optional JWT:
+  ```python
+  from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 
-### 5.2. Hệ thống Gợi ý (Recommendation Engine)
-- **Content-Based Filtering (CBF):** Dựa trên `tags`, `difficulty`, `cook_time` của món ăn và sở thích của user (`user_preferences`: vị cay, ăn chay, dị ứng...). Tính Cosine Similarity giữa user profile vector và recipe feature matrix.
-- **Collaborative Filtering (CF):** Khi database có $\ge 200$ đánh giá (`ratings`), sử dụng thuật toán SVD từ thư viện `scikit-surprise` để dự đoán món ăn phù hợp theo hành vi của nhóm người dùng tương đồng.
-- **Hybrid:** Kết hợp CBF (60%) + CF (40%) khi đủ ratings; fallback về CBF hoặc món thịnh hành (popular) nếu user mới (cold-start).
-- **Caching:** Kết quả gợi ý được lưu vào bảng `recommendation_cache` và có TTL (ví dụ 1 giờ) để tránh tính toán lại liên tục gây chậm API.
+  @recommendations_bp.route("/recommendations", methods=["GET"])
+  def get_recommendations():
+      # Kiểm tra token nếu có, không có thì user_id = None
+      try:
+          verify_jwt_in_request(optional=True)
+          user_id = get_jwt_identity()
+      except Exception:
+          user_id = None
 
-### 5.3. Thực đơn & Shopping List (`/api/meal-plans`)
-- Cho phép xếp món vào các bữa: `breakfast`, `lunch`, `dinner` trong tuần (`week_start`, `day_of_week` 0-6).
-- Endpoint `/api/meal-plans/shopping-list`: Tự động tổng hợp và cộng dồn số lượng nguyên liệu cần mua trong tuần (nhóm theo `ingredient_id` và cùng đơn vị tính `unit`).
+      # Nếu chưa login -> Trả về danh sách món phổ biến nhất (Popular recipes) với HTTP 200
+      if not user_id:
+          return success_response(
+              data=_fallback_popular_list(limit),
+              message="Gợi ý món ăn phổ biến dành cho khách"
+          )
+      ...
+  ```
+
+#### 2. Nâng cấp thuật toán CBF (`app/services/content_based.py`):
+- **Xử lý Vùng miền (`region`)**:
+  - Khi user có preference `pref_type == "region"`, hãy map sang tag vùng miền tương ứng (ví dụ: `mien_nam` $\rightarrow$ tag `"Miền Nam"`, `mien_bac` $\rightarrow$ tag `"Miền Bắc"`, `mien_trung` $\rightarrow$ tag `"Miền Trung"`), hoặc lọc/boost các recipe có `recipe.region == pref_value`.
+- **Bổ sung Mapping khẩu vị**:
+  - `taste_to_tag`: Bổ sung `"mild": "thanh đạm"`, `"sweet": "ngọt"`, `"spicy": "cay"`.
+  - `diet_to_tag`: Bổ sung `"healthy": "healthy"`, `"ít dầu": "ít dầu"`, `"vegetarian": "chay"`.
+- Đảm bảo nếu người dùng thiết lập khẩu vị thì vector `user_vec` được tính toán chuẩn xác, không bị rỗng (`sum == 0`).
+
+#### 3. Xử lý Collaborative Filtering (CF) (`app/services/collaborative.py`):
+- Thư viện `scikit-surprise` thường gặp lỗi compile C++ trên Windows. Nếu không cài được `surprise`, bạn có thể triển khai ma trận SVD thuần túy bằng `scipy.sparse.linalg.svds` hoặc `sklearn.decomposition.TruncatedSVD` trên ma trận User-Recipe rating, hoặc load mô hình dự phòng để nhánh CF (trọng số 40%) thực sự sinh ra điểm dự đoán thay vì trả về `[]`.
 
 ---
 
-## 6. QUY TRÌNH THỰC HIỆN TỪNG BƯỚC (EXECUTION PROTOCOL)
+### Task 3.3: Bổ sung Route Alias để tương thích 100% với Frontend
 
-Khi người dùng yêu cầu làm việc, hãy thực hiện theo thứ tự các Phase và Task được liệt kê trong `KEHOACH_BACKEND_NauAn.md`:
+Frontend đã được thiết kế sẵn các API call, để tránh gãy kết nối, Backend cần hỗ trợ các route alias sau:
 
+1. **Lưu công thức nấu ăn (`app/routes/meal_plans.py`)**:
+   - Hiện tại Backend chỉ có `POST /api/users/me/saved` (body `{ "recipe_id": 15 }`).
+   - Frontend đang gọi: `POST /api/users/me/saved/<int:recipe_id>`.
+   - **Giải pháp**: Thêm route alias:
+     ```python
+     @meal_plans_bp.route("/users/me/saved/<int:recipe_id>", methods=["POST"])
+     @jwt_required_custom
+     def save_recipe_by_id(recipe_id):
+         # Gọi logic lưu recipe_id tương tự route POST /users/me/saved
+     ```
+
+2. **Đánh giá món ăn (`app/routes/ratings.py`)**:
+   - Hiện tại Backend chỉ có `POST /api/ratings` và `GET /api/recipes/<int:recipe_id>/ratings`.
+   - Frontend đang gọi: `POST /api/recipes/<int:recipe_id>/ratings` với body `{ "score": 5, "review_text": "..." }`.
+   - **Giải pháp**: Mở thêm method `POST` trên route `/recipes/<int:recipe_id>/ratings`:
+     ```python
+     @ratings_bp.route("/recipes/<int:recipe_id>/ratings", methods=["GET", "POST"])
+     def recipe_ratings(recipe_id):
+         if request.method == "POST":
+             # Lấy score, review_text từ body và user_id từ JWT -> Lưu rating
+     ```
+
+3. **Ghi nhận lượt xem (`app/routes/ratings.py`)**:
+   - Hiện tại Backend chỉ có `POST /api/view-history`.
+   - Frontend đang gọi: `POST /api/recipes/<int:recipe_id>/views`.
+   - **Giải pháp**: Thêm route:
+     ```python
+     @ratings_bp.route("/recipes/<int:recipe_id>/views", methods=["POST"])
+     def record_recipe_view(recipe_id):
+         # Ghi nhận view (fire-and-forget, optional auth)
+     ```
+
+4. **Lấy danh sách Tags (`app/routes/ingredients.py`)**:
+   - Hiện tại route là `/tags` (tức `GET /api/tags`).
+   - Frontend đang gọi: `GET /api/ingredients/tags`.
+   - **Giải pháp**: Thêm alias `@ingredients_bp.route("/ingredients/tags", methods=["GET"])` trỏ về hàm `list_tags`.
+
+5. **Thêm món vào Thực đơn tuần (`app/routes/meal_plans.py`)**:
+   - Trong `POST /api/meal-plans`: Frontend gửi `{ "date": "2026-09-22", "meal_type": "lunch", "recipe_id": 15, "servings": 4 }`.
+   - Backend hiện tại bắt buộc phải có `week_start` và `day_of_week`.
+   - **Giải pháp**: Nếu request có `date` (YYYY-MM-DD):
+     ```python
+     if "date" in data and not week_start_str:
+         target_date = date.fromisoformat(data["date"])
+         # Thứ 2 đầu tuần (0=Monday)
+         week_start = target_date - timedelta(days=target_date.weekday())
+         day_of_week = target_date.weekday()
+     ```
+
+---
+
+### Task 3.4: Chuẩn hóa toàn bộ Hình Ảnh Món Ăn Việt Nam
+
+1. Mở file `scripts/update_recipe_images.py`.
+2. Thay thế toàn bộ các link ảnh không đúng (đĩa salad hoa quả, mì ramen Nhật, sườn BBQ Mỹ, sủi cảo Trung Hoa) bằng **link ảnh HD món ăn Việt Nam chuẩn xác 100%**:
+   - *Cơm tấm sườn bì chả*: Đĩa cơm tấm sườn nướng than hoa, chả trứng, mỡ hành.
+   - *Phở bò truyền thống*: Tô phở bò tái lăn nước dùng trong vắt, hành hoa.
+   - *Bún chả Hà Nội*: Bát nước mắm chả miếng than hoa, đĩa bún sợi và rau sống.
+   - *Canh chua cá lóc*: Tô canh chua cá lóc miền Tây với dọc mùng, cà chua, dứa.
+   - *Thịt kho tàu*: Đĩa thịt ba chỉ kho trứng vịt nước dừa màu cánh gián.
+   - *Bánh xèo miền Nam*: Chiếc bánh xèo giòn rụm màu vàng nghệ nhân tôm thịt giá đỗ.
+   - *Bún bò Huế*: Tô bún bò sa tế cay nồng bắp bò giò heo.
+   - *Hủ tiếu Nam Vang*: Tô hủ tiếu tôm thịt trứng cút nước lèo trong ngọt.
+   - *Cá kho tộ*: Khúc cá kho tộ trong nồi đất sánh sệt ớt đỏ hành hoa.
+3. Chạy script để cập nhật trực tiếp vào Supabase database:
+   ```bash
+   python scripts/update_recipe_images.py
+   ```
+4. Đảm bảo cập nhật tương tự trong `scripts/data/recipes_data.py`.
+
+---
+
+## 🧪 4. HƯỚNG DẪN KIỂM THỬ SAU KHI SỬA
+
+Claude hãy chạy các lệnh sau để đảm bảo Backend chạy mượt mà:
+```bash
+# 1. Kiểm tra syntax toàn bộ backend
+python -m compileall app scripts
+
+# 2. Chạy cập nhật hình ảnh chuẩn lên Supabase
+python scripts/update_recipe_images.py
+
+# 3. Test API server
+python app.py
 ```
-PHASE 1: Khung xương (Init project, Config, 12 DB Models, Auth JWT)
-   ▼
-PHASE 2: Core Content (Seed 100 nguyên liệu, 15 tags, Recipes CRUD, Seed 80 món Việt 3 miền)
-   ▼
-PHASE 3: Tìm kiếm theo nguyên liệu (Search by ingredients algorithm, Substitutes API)
-   ▼
-PHASE 4: Recommendation ML (Preferences, Ratings, Content-Based TF-IDF, Collaborative SVD)
-   ▼
-PHASE 5: Tính năng mở rộng (Meal Plan & Shopping List, Saved Recipes, Admin Stats)
-   ▼
-PHASE 6: Hoàn thiện & Deploy (Procfile, Render configuration, Tài liệu API_DOCS.md)
-```
 
-### Checklist khi trả lời người dùng:
-1. **Nêu rõ Task đang làm** (ví dụ: `Task 1.1: Khởi tạo dự án & cấu hình môi trường`).
-2. **Cung cấp source code chi tiết, đầy đủ**, ghi rõ đường dẫn file (ví dụ: `app/models/recipe.py`).
-3. **Hướng dẫn chạy lệnh thử nghiệm** (lệnh migrate, seed, chạy server local, curl test).
-4. **Nhắc nhở cập nhật trạng thái checklist** `[x]` vào file `KEHOACH_BACKEND_NauAn.md` sau khi hoàn tất task.
+Sau khi bạn hoàn thành toàn bộ công việc Backend, hãy cập nhật trạng thái vào `status.md` và push code lên GitHub repo `Web_Goi_Y_Mon_An`. **Antigravity AI sẽ tiếp nhận và sửa hoàn thiện Frontend ngay sau đó!**

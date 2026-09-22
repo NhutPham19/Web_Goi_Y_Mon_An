@@ -190,14 +190,17 @@ export const RecipeDetailPage: React.FC = () => {
           {/* Hero text overlay */}
           <div className="absolute bottom-6 inset-x-6 text-white space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              {recipe.tags?.map((t) => (
-                <span
-                  key={t.id}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/20 backdrop-blur-md text-white"
-                >
-                  #{t.name}
-                </span>
-              ))}
+              {recipe.tags?.map((t: any, idx: number) => {
+                const tagName = typeof t === 'string' ? t : t?.name;
+                return (
+                  <span
+                    key={typeof t === 'string' ? `${t}-${idx}` : (t?.id || idx)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white/20 backdrop-blur-md text-white"
+                  >
+                    #{tagName}
+                  </span>
+                );
+              })}
             </div>
             <h1 className="text-2xl sm:text-4xl font-black font-heading tracking-tight">
               {recipe.name}

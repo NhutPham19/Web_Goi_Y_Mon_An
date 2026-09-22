@@ -118,14 +118,17 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSavedChange })
 
           {/* Tags */}
           <div className="flex flex-wrap gap-1.5 mt-3">
-            {recipe.tags?.slice(0, 3).map((tag) => (
-              <span
-                key={tag.id}
-                className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-neutral-100 text-neutral-600"
-              >
-                #{tag.name}
-              </span>
-            ))}
+            {recipe.tags?.slice(0, 3).map((tag: any, idx: number) => {
+              const tagName = typeof tag === 'string' ? tag : tag?.name;
+              return (
+                <span
+                  key={typeof tag === 'string' ? `${tag}-${idx}` : (tag?.id || idx)}
+                  className="px-2 py-0.5 text-[11px] font-medium rounded-md bg-neutral-100 text-neutral-600"
+                >
+                  #{tagName}
+                </span>
+              );
+            })}
           </div>
         </div>
 

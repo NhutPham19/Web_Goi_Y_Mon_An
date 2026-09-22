@@ -27,7 +27,8 @@ export const SubstituteModal: React.FC<SubstituteModalProps> = ({
       try {
         const res = await ingredientsApi.getSubstitutes(ingredientId);
         if (res.success && res.data) {
-          setSubstitutes(res.data);
+          const list = Array.isArray(res.data) ? res.data : (res.data.substitutes || []);
+          setSubstitutes(list);
         } else {
           setSubstitutes([]);
         }
@@ -85,7 +86,9 @@ export const SubstituteModal: React.FC<SubstituteModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{sub.emoji || '✨'}</span>
-                    <span className="font-bold text-neutral-800 text-sm">{sub.substitute_name}</span>
+                    <span className="font-bold text-neutral-800 text-sm">
+                      {sub.substitute_name || (sub as any).name || 'Nguyên liệu thay thế'}
+                    </span>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">
                     Tỷ lệ: {sub.ratio}:1

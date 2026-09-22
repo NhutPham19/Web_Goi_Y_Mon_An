@@ -47,7 +47,15 @@ export const MealPlanPage: React.FC = () => {
     try {
       const res = await mealPlansApi.getAll();
       if (res.success && res.data) {
-        setPlans(res.data);
+        let items: MealPlanItem[] = [];
+        if (Array.isArray(res.data)) {
+          items = res.data;
+        } else if (res.data.days && typeof res.data.days === 'object') {
+          Object.values(res.data.days).forEach((dayList: any) => {
+            if (Array.isArray(dayList)) items.push(...dayList);
+          });
+        }
+        setPlans(items);
       }
     } catch {
       toast.error('Không thể tải thực đơn tuần');
@@ -80,7 +88,8 @@ export const MealPlanPage: React.FC = () => {
     try {
       const res = await mealPlansApi.getShoppingList();
       if (res.success && res.data) {
-        setShoppingList(res.data);
+        const list = Array.isArray(res.data) ? res.data : (res.data.ingredients || []);
+        setShoppingList(list);
       }
     } catch {
       toast.error('Không thể tổng hợp danh sách đi chợ');

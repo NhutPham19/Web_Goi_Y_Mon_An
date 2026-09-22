@@ -154,7 +154,7 @@ export const HomePage: React.FC = () => {
             icon={<ChefHat className="w-4 h-4 text-brand-500" />}
             header={
               <img
-                src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80"
+                src="https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=800&q=80"
                 alt="Miền Nam"
                 className="w-full h-full object-cover"
               />

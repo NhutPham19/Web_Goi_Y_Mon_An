@@ -20,7 +20,11 @@ export const SavedRecipesPage: React.FC = () => {
     try {
       const res = await recipesApi.getSaved();
       if (res.success && res.data) {
-        setRecipes(res.data.map((r: any) => ({ ...r, is_saved: true })));
+        const list = res.data.map((r: any) => {
+          const item = r.recipe ? { ...r.recipe, is_saved: true } : { ...r, is_saved: true };
+          return item;
+        });
+        setRecipes(list);
       }
     } catch {
       setRecipes([]);

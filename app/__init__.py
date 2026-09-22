@@ -75,3 +75,8 @@ def _register_blueprints(app):
     app.register_blueprint(ratings_bp,         url_prefix="/api")
     app.register_blueprint(meal_plans_bp,      url_prefix="/api")
     app.register_blueprint(admin_bp,           url_prefix="/api/admin")
+
+
+# Cho phép Gunicorn khởi chạy trực tiếp với lệnh mặc định: gunicorn app:app
+app = create_app()
+

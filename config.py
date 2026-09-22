@@ -9,6 +9,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _fix_db_url(url: str) -> str:
+    """
+    SQLAlchemy 2.0+ bắt buộc dùng 'postgresql://' thay vì 'postgres://'.
+    Render / Heroku / Supabase thường inject 'postgres://', cần chuẩn hóa.
+    """
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
 class Config:
     """Base config — mọi môi trường đều kế thừa."""
 
@@ -16,8 +26,8 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or "fallback-insecure-key-change-in-production"
     FLASK_ENV = os.environ.get("FLASK_ENV", "production")
 
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "")
+    # Database — chuẩn hóa prefix postgresql:// cho SQLAlchemy 2.0+
+    SQLALCHEMY_DATABASE_URI = _fix_db_url(os.environ.get("DATABASE_URL", ""))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,          # Tự kiểm tra kết nối trước khi dùng
@@ -59,11 +69,6 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_ECHO = False
-
-    # Render tự inject PORT; gunicorn bind qua Procfile
-    @classmethod
-    def init_app(cls, app):
-        Config.init_app(app)
 
 
 # Map tên môi trường sang class config

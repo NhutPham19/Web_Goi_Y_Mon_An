@@ -2,34 +2,40 @@
 app/routes/recommendations.py
 Blueprint: recommendations_bp
 Endpoint:
-  GET /api/recommendations?limit=10   (cần token)
+  GET /api/recommendations?limit=10   (Optional JWT — khách không cần đăng nhập)
 
 Logic:
-  - Nếu DB có >= 200 ratings → Hybrid CBF (60%) + CF (40%)
-  - Nếu < 200 ratings → CBF thuần
-  - User mới (không có preferences) → Popular recipes (cold-start fallback)
+  - User chưa đăng nhập → Trả về danh sách món phổ biến nhất (fallback)
+  - User đã đăng nhập, chưa có preferences → Trả về popular (cold-start fallback)
+  - User đã đăng nhập, có preferences, DB < 200 ratings → CBF thuần
+  - User đã đăng nhập, có preferences, DB >= 200 ratings → Hybrid CBF 60% + CF 40%
 """
 from flask import Blueprint, request, current_app
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 
 from app import db
 from app.models.rating import Rating
 from app.utils.response import success_response, error_response
-from app.utils.decorators import jwt_required_custom
 
 recommendations_bp = Blueprint("recommendations", __name__)
 
 
 @recommendations_bp.route("/recommendations", methods=["GET"])
-@jwt_required_custom
 def get_recommendations():
     """
     GET /api/recommendations?limit=10&force_refresh=false
+    Optional JWT: Khách vãng lai cũng có thể gọi, nhận về popular recipes.
     Query params:
       limit: số lượng gợi ý (mặc định 10, tối đa 20)
       force_refresh: "true" để bỏ qua cache và tính lại ngay
     """
-    user_id = get_jwt_identity()
+    # --- Optional JWT: không yêu cầu bắt buộc ---
+    user_id = None
+    try:
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+    except Exception:
+        user_id = None
 
     try:
         limit = min(20, max(1, int(request.args.get("limit", 10))))
@@ -37,6 +43,13 @@ def get_recommendations():
         limit = 10
 
     force_refresh = request.args.get("force_refresh", "false").lower() == "true"
+
+    # Khách vãng lai (chưa đăng nhập) → Trả về popular
+    if not user_id:
+        return success_response(
+            data=_fallback_popular_list(limit),
+            message="Gợi ý các món ăn được yêu thích nhất"
+        )
 
     try:
         cf_min = current_app.config.get("CF_MIN_RATINGS", 200)
@@ -49,7 +62,6 @@ def get_recommendations():
         else:
             from app.services.content_based import compute_recommendations
             if force_refresh:
-                # Xóa cache cũ trước khi tính lại
                 _clear_user_cache(user_id)
             recipes = compute_recommendations(user_id, top_n=limit)
             algo = "cbf"
@@ -113,7 +125,7 @@ def _hybrid_recommendations(user_id: str, limit: int, force_refresh: bool = Fals
     cf_results = {}
     cf_raw = compute_cf_recommendations(user_id, top_n=limit * 2)
     for recipe_id, score in cf_raw:
-        # Normalize CF score: predict CF từ scale 1-5 → normalize về 0-1
+        # Normalize CF score: predict từ scale 1-5 → normalize về 0-1
         cf_results[recipe_id] = (score - 1) / 4.0
 
     # Merge: hybrid = 0.6*CBF + 0.4*CF

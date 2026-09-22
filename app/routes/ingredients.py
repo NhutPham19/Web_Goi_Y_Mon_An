@@ -6,6 +6,7 @@ Endpoints:
   GET  /api/ingredients/:id           (public)
   GET  /api/ingredients/:id/substitutes (public)
   GET  /api/tags                      (public)
+  GET  /api/ingredients/tags          (public) — alias từ Frontend
   POST /api/admin/ingredients         → trong admin.py
   POST /api/admin/tags                → trong admin.py
 """
@@ -80,10 +81,12 @@ def get_substitutes(ingredient_id):
         ingredient_id=ingredient_id
     ).all()
 
-    return success_response(data={
-        "ingredient": ingredient.to_dict(),
-        "substitutes": [s.to_dict() for s in substitutes],
-    })
+    # Trả về mảng substitutes trực tiếp (SubstituteModal.tsx dùng setSubstitutes(res.data))
+    # ingredient info được đặt trong message để debug nếu cần
+    return success_response(
+        data=[s.to_dict() for s in substitutes],
+        message=f"Nguyên liệu thay thế cho: {ingredient.name}",
+    )
 
 
 # ─── TAGS ────────────────────────────────────────────────────────────────────
@@ -93,3 +96,9 @@ def list_tags():
     """GET /api/tags — Trả về tất cả tags."""
     tags = Tag.query.order_by(Tag.name).all()
     return success_response(data=[t.to_dict() for t in tags])
+
+
+@ingredients_bp.route("/ingredients/tags", methods=["GET"])
+def list_tags_alias():
+    """GET /api/ingredients/tags — Alias để Frontend có thể gọi."""
+    return list_tags()

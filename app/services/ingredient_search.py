@@ -96,6 +96,20 @@ def search_by_ingredients(ingredient_ids: list, match_mode: str = "any") -> list
         )
 
         results.append({
+            # Nested recipe object — SearchPage.tsx dùng resItem.recipe.id, resItem.recipe.name...
+            "recipe": {
+                "id": recipe.id,
+                "name": recipe.name,
+                "image_url": recipe.image_url,
+                "difficulty": recipe.difficulty,
+                "cook_time_min": recipe.cook_time_min,
+                "avg_rating": round(recipe.avg_rating, 1),
+                "rating_count": recipe.rating_count,
+                "region": recipe.region,
+                "tags": [t.name for t in recipe.tags],
+                "is_saved": False,
+            },
+            # Flat fields — cũng giữ lại để backward compatible
             "recipe_id": recipe.id,
             "recipe_name": recipe.name,
             "image_url": recipe.image_url,
@@ -106,7 +120,7 @@ def search_by_ingredients(ingredient_ids: list, match_mode: str = "any") -> list
             "matched_ingredients": [f"{i.name} {i.emoji}" for i in matched_ings],
             "matched_count": matched_count,
             "total_required": total_required,
-            "match_percent": match_percent,
+            "match_percent": match_percent,  # Đã là phần trăm (0-100), ví dụ 75.0
             "missing_ingredients": [f"{i.name} {i.emoji}" for i in missing_ings],
         })
 

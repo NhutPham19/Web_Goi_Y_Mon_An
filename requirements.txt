@@ -24,8 +24,8 @@ pandas==2.2.3
 numpy==1.26.4
 joblib==1.4.2
 
-# ML — Collaborative Filtering (cài sau khi có đủ ratings)
-# scikit-surprise==1.1.4
+# ML — Collaborative Filtering dùng scipy.sparse.linalg.svds (không cần C++ build)
+scipy==1.14.1
 
 # Deploy
 gunicorn==23.0.0

@@ -2,12 +2,14 @@
 app/routes/ratings.py
 Blueprint: ratings_bp
 Endpoints:
-  POST /api/ratings                   (cần token)
-  GET  /api/recipes/:id/ratings       (public)
-  POST /api/view-history              (cần token — fire and forget)
+  POST /api/ratings                          (cần token) — gốc, vẫn giữ
+  GET  /api/recipes/:id/ratings              (public)
+  POST /api/recipes/:id/ratings             (cần token) — alias từ Frontend
+  POST /api/view-history                     (cần token) — fire and forget
+  POST /api/recipes/:id/views               (cần token) — alias từ Frontend
 """
 from flask import Blueprint, request
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
 from sqlalchemy import func
 
 from app import db
@@ -28,49 +30,7 @@ def create_rating():
     """
     user_id = get_jwt_identity()
     data = request.get_json(silent=True) or {}
-
-    recipe_id = data.get("recipe_id")
-    score = data.get("score")
-    review_text = data.get("review_text", "").strip()
-
-    # Validation
-    if not recipe_id:
-        return error_response("recipe_id là bắt buộc", 400)
-    if score is None or not isinstance(score, int) or score < 1 or score > 5:
-        return error_response("score phải là số nguyên từ 1 đến 5", 400)
-
-    recipe = Recipe.query.get(recipe_id)
-    if not recipe:
-        return error_response("Công thức không tồn tại", 404)
-
-    # Upsert rating (user chỉ rate 1 lần / recipe)
-    existing = Rating.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
-
-    if existing:
-        existing.score = score
-        existing.review_text = review_text or existing.review_text
-        rating = existing
-    else:
-        rating = Rating(
-            user_id=user_id,
-            recipe_id=recipe_id,
-            score=score,
-            review_text=review_text or None,
-        )
-        db.session.add(rating)
-
-    db.session.flush()
-
-    # Cập nhật avg_rating và rating_count trên bảng recipes
-    _update_recipe_rating_stats(recipe_id)
-
-    db.session.commit()
-
-    return success_response(
-        data=rating.to_dict(),
-        message="Đánh giá thành công",
-        status_code=201 if not existing else 200,
-    )
+    return _do_create_rating(user_id, data)
 
 
 @ratings_bp.route("/recipes/<int:recipe_id>/ratings", methods=["GET"])
@@ -101,6 +61,21 @@ def get_recipe_ratings(recipe_id):
     )
 
 
+@ratings_bp.route("/recipes/<int:recipe_id>/ratings", methods=["POST"])
+@jwt_required_custom
+def create_rating_for_recipe(recipe_id):
+    """
+    POST /api/recipes/:id/ratings    ← alias được Frontend gọi
+    Body: { "score": 4, "review_text": "Ngon!" }
+    recipe_id lấy từ URL path thay vì body.
+    """
+    user_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    # Inject recipe_id từ URL vào data
+    data["recipe_id"] = recipe_id
+    return _do_create_rating(user_id, data)
+
+
 @ratings_bp.route("/view-history", methods=["POST"])
 @jwt_required_custom
 def record_view():
@@ -111,10 +86,82 @@ def record_view():
     """
     user_id = get_jwt_identity()
     data = request.get_json(silent=True) or {}
+    return _do_record_view(user_id, data.get("recipe_id"), data.get("duration_sec"))
 
+
+@ratings_bp.route("/recipes/<int:recipe_id>/views", methods=["POST"])
+@jwt_required_custom
+def record_view_for_recipe(recipe_id):
+    """
+    POST /api/recipes/:id/views    ← alias được Frontend gọi
+    Body: { "duration_sec": 120 }  (recipe_id lấy từ URL)
+    Fire-and-forget: luôn trả 200.
+    """
+    user_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    return _do_record_view(user_id, recipe_id, data.get("duration_sec"))
+
+
+# ─── SHARED LOGIC ──────────────────────────────────────────────────────────────
+
+def _do_create_rating(user_id: str, data: dict):
+    """Xử lý logic upsert rating — dùng chung cho cả 2 route POST rating."""
     recipe_id = data.get("recipe_id")
-    duration_sec = data.get("duration_sec")
+    score = data.get("score")
+    review_text = str(data.get("review_text", "") or "").strip()
 
+    # Validation
+    if not recipe_id:
+        return error_response("recipe_id là bắt buộc", 400)
+
+    if score is None:
+        return error_response("score là bắt buộc", 400)
+
+    try:
+        score = int(score)
+    except (TypeError, ValueError):
+        return error_response("score phải là số nguyên từ 1 đến 5", 400)
+
+    if score < 1 or score > 5:
+        return error_response("score phải là số nguyên từ 1 đến 5", 400)
+
+    recipe = Recipe.query.get(recipe_id)
+    if not recipe:
+        return error_response("Công thức không tồn tại", 404)
+
+    # Upsert rating (user chỉ rate 1 lần / recipe)
+    existing = Rating.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
+    is_new = existing is None
+
+    if existing:
+        existing.score = score
+        existing.review_text = review_text or existing.review_text
+        rating = existing
+    else:
+        rating = Rating(
+            user_id=user_id,
+            recipe_id=recipe_id,
+            score=score,
+            review_text=review_text or None,
+        )
+        db.session.add(rating)
+
+    db.session.flush()
+
+    # Cập nhật avg_rating và rating_count trên bảng recipes
+    _update_recipe_rating_stats(recipe_id)
+
+    db.session.commit()
+
+    return success_response(
+        data=rating.to_dict(),
+        message="Đánh giá thành công",
+        status_code=201 if is_new else 200,
+    )
+
+
+def _do_record_view(user_id: str, recipe_id, duration_sec):
+    """Xử lý logic ghi view history — dùng chung cho cả 2 route POST view."""
     if recipe_id:
         try:
             vh = ViewHistory(

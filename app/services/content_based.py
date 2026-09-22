@@ -1,7 +1,7 @@
 """
 app/services/content_based.py
 Content-Based Filtering: gợi ý món ăn dựa trên sở thích user.
-Dùng TF-IDF / Cosine Similarity.
+Dùng one-hot encoding cho Tags, Difficulty, Cook time + Cosine Similarity.
 """
 from datetime import datetime, timezone, timedelta
 import numpy as np
@@ -10,7 +10,7 @@ import numpy as np
 def compute_recommendations(user_id: str, top_n: int = 10) -> list:
     """
     Điểm vào chính — được gọi từ route /api/recommendations.
-    
+
     Logic:
     1. Check cache còn fresh không (< 1 giờ)
     2. Stale → chạy CBF (hoặc hybrid) → lưu cache
@@ -72,7 +72,7 @@ def compute_recommendations(user_id: str, top_n: int = 10) -> list:
 def _run_cbf(user_id: str, prefs: list, top_n: int) -> list:
     """
     Chạy Content-Based Filtering.
-    
+
     Returns:
         List of (recipe_id, score) sorted by score DESC
     """
@@ -83,10 +83,12 @@ def _run_cbf(user_id: str, prefs: list, top_n: int) -> list:
     # Lấy tất cả tags để build feature space
     all_tags = Tag.query.order_by(Tag.id).all()
     tag_name_to_idx = {t.name: i for i, t in enumerate(all_tags)}
+    tag_name_lower_to_idx = {t.name.lower(): i for i, t in enumerate(all_tags)}
     difficulties = {"easy": 0, "medium": 1, "hard": 2}
+    regions_order = ["mien_bac", "mien_trung", "mien_nam", "quoc_te"]
 
-    # Feature dimension: len(tags) + 3 (difficulty) + 1 (cook_time normalized)
-    feature_dim = len(all_tags) + 3 + 1
+    # Feature dimension: len(tags) + 3 (difficulty) + 4 (region) + 1 (cook_time normalized)
+    feature_dim = len(all_tags) + 3 + 4 + 1
 
     # Build recipe feature matrix
     recipes = Recipe.query.filter_by(is_published=True).all()
@@ -104,9 +106,14 @@ def _run_cbf(user_id: str, prefs: list, top_n: int) -> list:
             if tag.name in tag_name_to_idx:
                 vec[tag_name_to_idx[tag.name]] = 1.0
 
-        # Difficulty one-hot
+        # Difficulty one-hot (offset: len(all_tags))
         diff_idx = len(all_tags) + difficulties.get(recipe.difficulty, 1)
         vec[diff_idx] = 1.0
+
+        # Region one-hot (offset: len(all_tags) + 3)
+        if recipe.region and recipe.region in regions_order:
+            region_idx = len(all_tags) + 3 + regions_order.index(recipe.region)
+            vec[region_idx] = 1.0
 
         # Cook time normalized (0-1, max=180 phút)
         vec[-1] = min(recipe.cook_time_min, 180) / 180.0
@@ -119,45 +126,84 @@ def _run_cbf(user_id: str, prefs: list, top_n: int) -> list:
 
     recipe_matrix = np.array(recipe_features)
 
-    # Build user preference vector
+    # --- Build user preference vector ---
     user_vec = np.zeros(feature_dim)
 
-    pref_tag_map = {t.name: i for i, t in enumerate(all_tags)}
+    # Mapping taste preference sang tag name
+    taste_to_tag = {
+        "spicy": "cay",
+        "mild": "thanh đạm",
+        "sweet": "ngọt",
+        "salty": "mặn",
+        "sour": "chua",
+        "vegetarian": "chay",
+        "healthy": "healthy",
+    }
+
+    # Mapping diet preference sang tag name
+    diet_to_tag = {
+        "vegetarian": "chay",
+        "vegan": "chay",
+        "quick": "nhanh",
+        "fast": "nhanh",
+        "healthy": "healthy",
+        "low_fat": "ít dầu",
+        "ít dầu": "ít dầu",
+    }
 
     for pref in prefs:
         pref_type = pref.pref_type
         pref_value = pref.pref_value
 
         if pref_type == "taste":
-            # "spicy" → tìm tag "cay", "sweet" → "ngọt", etc.
-            taste_to_tag = {
-                "spicy": "cay",
-                "sweet": "ngọt",
-                "salty": "mặn",
-                "vegetarian": "chay",
-                "healthy": "ít dầu",
-            }
             tag_name = taste_to_tag.get(pref_value, pref_value)
-            if tag_name in pref_tag_map:
-                user_vec[pref_tag_map[tag_name]] = 1.5  # boost
+            # Tìm trong tag_name_to_idx (case-sensitive) rồi fallback lowercase
+            if tag_name in tag_name_to_idx:
+                user_vec[tag_name_to_idx[tag_name]] = 1.5  # boost
+            elif tag_name.lower() in tag_name_lower_to_idx:
+                user_vec[tag_name_lower_to_idx[tag_name.lower()]] = 1.5
 
         elif pref_type == "diet":
-            diet_to_tag = {
-                "vegetarian": "chay",
-                "vegan": "chay",
-                "quick": "nhanh",
-            }
             tag_name = diet_to_tag.get(pref_value, pref_value)
-            if tag_name in pref_tag_map:
-                user_vec[pref_tag_map[tag_name]] = 1.5
+            if tag_name in tag_name_to_idx:
+                user_vec[tag_name_to_idx[tag_name]] = 1.5
+            elif tag_name.lower() in tag_name_lower_to_idx:
+                user_vec[tag_name_lower_to_idx[tag_name.lower()]] = 1.5
+
+        elif pref_type == "region":
+            # Boost chiều vùng miền tương ứng
+            region_map = {
+                "mien_bac": "mien_bac",
+                "mien_trung": "mien_trung",
+                "mien_nam": "mien_nam",
+                "quoc_te": "quoc_te",
+                # Miền Bắc/Nam/Trung tag trong bảng tags
+                "Miền Bắc": "mien_bac",
+                "Miền Trung": "mien_trung",
+                "Miền Nam": "mien_nam",
+            }
+            region_key = region_map.get(pref_value, pref_value)
+            if region_key in regions_order:
+                region_offset = len(all_tags) + 3 + regions_order.index(region_key)
+                user_vec[region_offset] = 2.0  # boost mạnh hơn
+            # Đồng thời boost tag vùng miền nếu có
+            tag_name_map = {
+                "mien_bac": "Miền Bắc",
+                "mien_trung": "Miền Trung",
+                "mien_nam": "Miền Nam",
+            }
+            tag_name = tag_name_map.get(pref_value, pref_value)
+            if tag_name in tag_name_to_idx:
+                user_vec[tag_name_to_idx[tag_name]] = 2.0
 
         elif pref_type == "serving_size":
             try:
                 serving_size = int(pref_value)
                 # Nếu serving nhỏ (<= 2), ưu tiên món nhanh
                 if serving_size <= 2:
-                    if "nhanh" in pref_tag_map:
-                        user_vec[pref_tag_map["nhanh"]] = 1.0
+                    for tag_key in ["nhanh", "dưới 30 phút"]:
+                        if tag_key in tag_name_to_idx:
+                            user_vec[tag_name_to_idx[tag_key]] = 1.0
             except ValueError:
                 pass
 
@@ -183,8 +229,8 @@ def _save_cache(user_id: str, recipe_scores: list, algorithm: str = "cbf"):
     from app import db
     from app.models.meal_plan import RecommendationCache
 
-    # Xóa cache cũ của user
-    RecommendationCache.query.filter_by(user_id=user_id).delete()
+    # Xóa cache cũ của user (chỉ xóa cùng algorithm)
+    RecommendationCache.query.filter_by(user_id=user_id, algorithm=algorithm).delete()
 
     for recipe_id, score in recipe_scores:
         cache_entry = RecommendationCache(

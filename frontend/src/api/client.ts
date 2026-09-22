@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Vite proxy forwards /api to http://localhost:5000/api
-export const API_BASE = '/api';
+// Hỗ trợ biến môi trường khi deploy cloud (Render/Vercel) hoặc fallback về /api cho Local/Docker Nginx proxy
+export const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

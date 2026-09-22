@@ -1,0 +1,13 @@
+.git
+.gitignore
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env.local
+frontend/
+node_modules/
+dist/
+*.log
+scripts/pinterest_sample.html

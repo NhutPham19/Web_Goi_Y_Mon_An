@@ -56,6 +56,7 @@ class Recipe(db.Model):
     name = db.Column(db.String(255), nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)
     image_url = db.Column(db.String(500), nullable=True)
+    backup_image_url = db.Column(db.String(500), nullable=True)
 
     difficulty = db.Column(
         db.Enum("easy", "medium", "hard", name="difficulty_enum"),
@@ -110,6 +111,7 @@ class Recipe(db.Model):
             "id": self.id,
             "name": self.name,
             "image_url": self.image_url,
+            "backup_image_url": self.backup_image_url,
             "difficulty": self.difficulty,
             "cook_time_min": self.cook_time_min,
             "prep_time_min": self.prep_time_min,
@@ -131,6 +133,7 @@ class Recipe(db.Model):
             "name": self.name,
             "description": self.description,
             "image_url": self.image_url,
+            "backup_image_url": self.backup_image_url,
             "difficulty": self.difficulty,
             "cook_time_min": self.cook_time_min,
             "prep_time_min": self.prep_time_min,

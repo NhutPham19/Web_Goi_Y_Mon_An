@@ -70,6 +70,14 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onSavedChange })
           alt={recipe.name}
           className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           loading="lazy"
+          onError={(e) => {
+            const currentSrc = e.currentTarget.src;
+            if (recipe.backup_image_url && !currentSrc.includes(recipe.backup_image_url)) {
+              e.currentTarget.src = recipe.backup_image_url;
+            } else {
+              e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+            }
+          }}
         />
 
         {/* Gradient overlay */}

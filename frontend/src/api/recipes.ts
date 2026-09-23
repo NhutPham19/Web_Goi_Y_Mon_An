@@ -5,17 +5,23 @@ export interface GetRecipesParams {
   page?: number;
   limit?: number;
   search?: string;
+  q?: string;
   tag?: string;
   region?: string;
   difficulty?: string;
   max_cook_time?: number;
   sort_by?: string;
   order?: 'asc' | 'desc';
+  published?: 'true' | 'false' | 'all';
 }
 
 export const recipesApi = {
   getAll: async (params?: GetRecipesParams) => {
-    const res = await apiClient.get('/recipes', { params });
+    const queryParams: any = { ...params };
+    if (queryParams.search && !queryParams.q) {
+      queryParams.q = queryParams.search;
+    }
+    const res = await apiClient.get('/recipes', { params: queryParams });
     return res.data;
   },
 

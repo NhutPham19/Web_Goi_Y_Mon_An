@@ -169,6 +169,14 @@ export const RecipeDetailPage: React.FC = () => {
             src={recipe.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'}
             alt={recipe.name}
             className="w-full h-full object-cover opacity-90"
+            onError={(e) => {
+              const currentSrc = e.currentTarget.src;
+              if (recipe.backup_image_url && !currentSrc.includes(recipe.backup_image_url)) {
+                e.currentTarget.src = recipe.backup_image_url;
+              } else {
+                e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+              }
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
 

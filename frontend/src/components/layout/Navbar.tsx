@@ -11,7 +11,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChefHat
+  ChefHat,
+  Shield
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -74,6 +75,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
         <div className="hidden md:flex items-center gap-3">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3 pl-2 border-l border-neutral-200">
+              {user.role === 'admin' && (
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded-xl transition shadow-xs"
+                >
+                  <Shield className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Quản trị</span>
+                </Link>
+              )}
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm">
                   {user.full_name?.charAt(0).toUpperCase() || 'U'}
@@ -132,6 +142,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
               {link.name}
             </Link>
           ))}
+          {user?.role === 'admin' && (
+            <Link
+              to="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold text-purple-700 bg-purple-50 hover:bg-purple-100"
+            >
+              <Shield className="w-4 h-4 text-purple-600" />
+              Quản Trị Hệ Thống (Admin)
+            </Link>
+          )}
           <div className="pt-4 border-t border-neutral-100">
             {isAuthenticated && user ? (
               <div className="flex items-center justify-between">

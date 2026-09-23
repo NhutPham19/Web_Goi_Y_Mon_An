@@ -13,6 +13,7 @@ import { SearchPage } from '@/pages/SearchPage';
 import { RecommendPage } from '@/pages/RecommendPage';
 import { MealPlanPage } from '@/pages/MealPlanPage';
 import { SavedRecipesPage } from '@/pages/SavedRecipesPage';
+import { AdminPage } from '@/pages/AdminPage';
 
 export function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -39,6 +40,7 @@ export function App() {
               <Route path="/recommend" element={<RecommendPage />} />
               <Route path="/meal-planner" element={<MealPlanPage />} />
               <Route path="/saved" element={<SavedRecipesPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </main>
 

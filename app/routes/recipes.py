@@ -45,15 +45,20 @@ def list_recipes():
 
     tag_name = request.args.get("tag", "").strip()
     difficulty = request.args.get("difficulty", "").strip()
-    q = request.args.get("q", "").strip()
+    # Hỗ trợ cả 'q' và 'search' parameter để tương thích hoàn toàn
+    q = (request.args.get("q") or request.args.get("search") or "").strip()
     region = request.args.get("region", "").strip()
     published = request.args.get("published", "true").strip().lower()
 
     query = Recipe.query
 
-    # Mặc định chỉ trả về published — admin có thể truyền published=false để xem draft
-    if published != "false":
-        query = query.filter(Recipe.is_published == True)  # noqa
+    # Quản lý lọc theo trạng thái xuất bản
+    if published == "all":
+        pass  # Lấy tất cả (dành cho admin)
+    elif published == "false":
+        query = query.filter(Recipe.is_published == False)  # noqa: E712
+    else:
+        query = query.filter(Recipe.is_published == True)  # noqa: E712
 
     if tag_name:
         query = query.join(Recipe.tags).filter(Tag.name == tag_name)
@@ -123,6 +128,8 @@ def create_recipe():
     recipe = Recipe(
         name=name,
         description=data.get("description", ""),
+        image_url=data.get("image_url", "/recipes/1.jpg"),
+        backup_image_url=data.get("backup_image_url"),
         difficulty=difficulty,
         cook_time_min=int(data.get("cook_time_min", 30)),
         prep_time_min=int(data.get("prep_time_min", 15)),
@@ -180,6 +187,10 @@ def update_recipe(recipe_id):
         recipe.region = data["region"]
     if "is_published" in data:
         recipe.is_published = bool(data["is_published"])
+    if "image_url" in data:
+        recipe.image_url = data["image_url"]
+    if "backup_image_url" in data:
+        recipe.backup_image_url = data["backup_image_url"]
 
     # Cập nhật tags nếu có
     if "tag_ids" in data:
@@ -219,44 +230,117 @@ def delete_recipe(recipe_id):
 
 
 @recipes_bp.route("/admin/recipes/<int:recipe_id>/image", methods=["POST"])
+@recipes_bp.route("/admin/recipes/<int:recipe_id>/images", methods=["POST"])
 @admin_required
 def upload_recipe_image(recipe_id):
     """
-    POST /api/admin/recipes/:id/image
-    Form-data: file=<image_file>
+    POST /api/admin/recipes/:id/image hoặc /api/admin/recipes/:id/images
+    Hỗ trợ cả tải file từ máy tính lẫn dán link ảnh trực tuyến.
+    Tự động chuẩn hóa tên file tiếng Việt sang slug ASCII chống lỗi URL / cache.
+    Hỗ trợ 2 slot: slot 1 (ảnh chính) và slot 2 (ảnh dự phòng).
+    """
+    import os
+    import time
+    from app.utils.slugify import generate_normalized_filename
+
+    recipe = Recipe.query.get(recipe_id)
+    if not recipe:
+        return error_response("Công thức không tồn tại", 404)
+
+    # Xác định slot (1: ảnh chính, 2: ảnh dự phòng)
+    slot = 1
+    raw_slot = request.form.get("slot") or (request.get_json(silent=True) or {}).get("slot")
+    if str(raw_slot).strip().lower() in ["2", "slot2", "backup", "secondary"]:
+        slot = 2
+
+    saved_url = None
+
+    # TH1: Tải file ảnh trực tiếp từ máy tính
+    if "file" in request.files and request.files["file"].filename != "":
+        file = request.files["file"]
+        ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+        if ext not in ALLOWED_EXTENSIONS:
+            return error_response(f"Chỉ chấp nhận file ảnh: {ALLOWED_EXTENSIONS}", 400)
+
+        # Chuẩn hóa tên file sạch không dấu tiếng Việt
+        norm_filename = generate_normalized_filename(recipe.id, recipe.name, slot, ext)
+
+        # Lưu vào thư mục frontend/public/recipes
+        target_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "recipes"))
+        os.makedirs(target_dir, exist_ok=True)
+        target_path = os.path.join(target_dir, norm_filename)
+        file.save(target_path)
+
+        # Đồng bộ vào frontend/dist/recipes nếu tồn tại
+        dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist", "recipes"))
+        if os.path.exists(dist_dir):
+            try:
+                import shutil
+                shutil.copy2(target_path, os.path.join(dist_dir, norm_filename))
+            except Exception:
+                pass
+
+        saved_url = f"/recipes/{norm_filename}"
+
+    # TH2: Dán đường link ảnh trực tuyến (Image URL)
+    elif request.form.get("image_url") or (request.get_json(silent=True) or {}).get("image_url"):
+        input_url = (request.form.get("image_url") or (request.get_json(silent=True) or {}).get("image_url")).strip()
+        if input_url:
+            saved_url = input_url
+
+    if not saved_url:
+        return error_response("Vui lòng tải lên file ảnh hoặc nhập đường link ảnh", 400)
+
+    # Cập nhật slot tương ứng
+    if slot == 1:
+        recipe.image_url = saved_url
+    else:
+        recipe.backup_image_url = saved_url
+
+    db.session.commit()
+
+    return success_response(
+        data={
+            "slot": slot,
+            "image_url": recipe.image_url,
+            "backup_image_url": recipe.backup_image_url,
+        },
+        message=f"Đã lưu ảnh cho Slot {slot} thành công"
+    )
+
+
+@recipes_bp.route("/admin/recipes/<int:recipe_id>/set-primary", methods=["POST"])
+@admin_required
+def set_primary_image(recipe_id):
+    """
+    POST /api/admin/recipes/:id/set-primary
+    Hoán đổi ảnh giữa slot 1 và slot 2 (chọn ảnh nào làm ảnh chính hiển thị)
+    Body: { "slot": 1 | 2 }
     """
     recipe = Recipe.query.get(recipe_id)
     if not recipe:
         return error_response("Công thức không tồn tại", 404)
 
-    if "file" not in request.files:
-        return error_response("Không tìm thấy file trong request", 400)
+    data = request.get_json(silent=True) or {}
+    slot = int(data.get("slot", 1))
 
-    file = request.files["file"]
-    if file.filename == "":
-        return error_response("File không hợp lệ", 400)
-
-    # Kiểm tra định dạng file
-    ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in ALLOWED_EXTENSIONS:
-        return error_response(f"Chỉ chấp nhận file ảnh: {ALLOWED_EXTENSIONS}", 400)
-
-    try:
-        from app.services.cloudinary_service import upload_recipe_image as cloud_upload
-        result = cloud_upload(file, recipe_id)
-        recipe.image_url = result["url"]
+    # Nếu chọn slot 2 làm ảnh chính và slot 2 có ảnh -> hoán đổi với slot 1
+    if slot == 2 and recipe.backup_image_url:
+        old_primary = recipe.image_url
+        recipe.image_url = recipe.backup_image_url
+        recipe.backup_image_url = old_primary
         db.session.commit()
+    elif slot == 1 and recipe.image_url:
+        pass
 
-        return success_response(
-            data={
-                "image_url": result["url"],
-                "thumbnail_url": result["thumbnail_url"],
-            },
-            message="Upload ảnh thành công",
-        )
-    except Exception as e:
-        return error_response(f"Upload thất bại: {str(e)}", 500)
+    return success_response(
+        data={
+            "image_url": recipe.image_url,
+            "backup_image_url": recipe.backup_image_url,
+        },
+        message="Đã cập nhật ảnh chính (index) thành công"
+    )
 
 
 @recipes_bp.route("/admin/recipes/<int:recipe_id>/publish", methods=["POST"])

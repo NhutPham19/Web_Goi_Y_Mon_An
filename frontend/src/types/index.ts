@@ -54,6 +54,7 @@ export interface Recipe {
   name: string;
   description?: string;
   image_url?: string;
+  backup_image_url?: string;
   difficulty: Difficulty;
   cook_time_min: number;
   prep_time_min: number;
@@ -61,10 +62,12 @@ export interface Recipe {
   avg_rating: number;
   rating_count: number;
   region?: Region;
-  tags: Tag[];
+  tags: Tag[] | string[];
   ingredients?: RecipeIngredient[];
   steps?: Step[];
   is_saved?: boolean;
+  is_published?: boolean;
+  ingredient_count?: number;
 }
 
 export interface SearchByIngredientResult {

@@ -14,7 +14,9 @@ import {
   Compass, 
   ChefHat, 
   Filter, 
-  Utensils 
+  Utensils,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -25,12 +27,16 @@ export const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     const fetchRecipes = async () => {
       setLoading(true);
       try {
-        const params: any = { limit: 24 };
+        const params: any = { page, limit };
         if (selectedRegion !== 'all') params.region = selectedRegion;
         if (selectedDifficulty !== 'all') params.difficulty = selectedDifficulty;
         if (searchQuery.trim()) params.search = searchQuery.trim();
@@ -38,6 +44,10 @@ export const HomePage: React.FC = () => {
         const res = await recipesApi.getAll(params);
         if (res.success && res.data) {
           setRecipes(res.data);
+          if (res.pagination) {
+            setTotalPages(res.pagination.total_pages || 1);
+            setTotalCount(res.pagination.total || 0);
+          }
         }
       } catch (err) {
         console.error('Failed to load recipes', err);
@@ -47,7 +57,22 @@ export const HomePage: React.FC = () => {
     };
 
     fetchRecipes();
-  }, [selectedRegion, selectedDifficulty, searchQuery]);
+  }, [selectedRegion, selectedDifficulty, searchQuery, page]);
+
+  const handleRegionChange = (reg: string) => {
+    setSelectedRegion(reg);
+    setPage(1);
+  };
+
+  const handleDifficultyChange = (diff: string) => {
+    setSelectedDifficulty(diff);
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    document.getElementById('recipes-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,7 +235,7 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* RECIPES FILTER & LISTING */}
-      <section className="container mx-auto px-4 pt-8">
+      <section id="recipes-section" className="container mx-auto px-4 pt-8">
         {/* Header & Filter Controls */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-neutral-200">
           <div>
@@ -218,7 +243,7 @@ export const HomePage: React.FC = () => {
               Tất Cả Công Thức Nấu Ăn
             </h2>
             <p className="text-sm text-neutral-500 mt-1">
-              Hiển thị <span className="font-bold text-brand-600">{recipes.length}</span> món ăn chuẩn vị
+              Hiển thị <span className="font-bold text-brand-600">{recipes.length}</span> / {totalCount} món ăn chuẩn vị {totalPages > 1 && `(Trang ${page} / ${totalPages})`}
             </p>
           </div>
 
@@ -234,7 +259,7 @@ export const HomePage: React.FC = () => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setSelectedRegion(tab.id)}
+                  onClick={() => handleRegionChange(tab.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                     selectedRegion === tab.id
                       ? 'bg-white text-neutral-900 shadow-xs font-semibold'
@@ -249,7 +274,7 @@ export const HomePage: React.FC = () => {
             {/* Difficulty dropdown/toggle */}
             <select
               value={selectedDifficulty}
-              onChange={(e) => setSelectedDifficulty(e.target.value)}
+              onChange={(e) => handleDifficultyChange(e.target.value)}
               className="px-3 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-medium text-neutral-700 focus:outline-none focus:border-brand-500"
             >
               <option value="all">Độ khó: Tất cả</option>
@@ -279,6 +304,7 @@ export const HomePage: React.FC = () => {
                 setSelectedRegion('all');
                 setSelectedDifficulty('all');
                 setSearchQuery('');
+                setPage(1);
               }}
               className="mt-4 px-4 py-2 text-xs font-semibold text-brand-600 bg-brand-50 rounded-xl hover:bg-brand-100 transition"
             >
@@ -286,11 +312,73 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {recipes.map((recipe) => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-neutral-200/80 shadow-xs">
+                <span className="text-xs text-neutral-500">
+                  Hiển thị trang <strong className="text-neutral-800">{page}</strong> / {totalPages} ({totalCount} món ăn)
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => handlePageChange(page - 1)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Trước</span>
+                  </button>
+
+                  {Array.from({ length: totalPages }).map((_, idx) => {
+                    const pageNum = idx + 1;
+                    if (
+                      pageNum === 1 ||
+                      pageNum === totalPages ||
+                      (pageNum >= page - 2 && pageNum <= page + 2)
+                    ) {
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-xl text-xs font-bold transition ${
+                            page === pageNum
+                              ? 'bg-brand-600 text-white shadow-sm'
+                              : 'text-neutral-700 hover:bg-neutral-100 border border-neutral-200'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    }
+                    if (pageNum === page - 3 || pageNum === page + 3) {
+                      return (
+                        <span key={pageNum} className="text-neutral-400 text-xs px-1">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => handlePageChange(page + 1)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent transition"
+                  >
+                    <span>Sau</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

@@ -249,7 +249,7 @@ export const SearchPage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {results.map((resItem) => {
-                const percent = Math.round(resItem.match_percent * 100);
+                const percent = Math.min(100, Math.round(resItem.match_percent > 1 ? resItem.match_percent : resItem.match_percent * 100));
                 return (
                   <div
                     key={resItem.recipe.id}

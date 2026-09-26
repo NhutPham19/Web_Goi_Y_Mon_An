@@ -12,7 +12,7 @@ from sqlalchemy import func
 from app import db
 from app.models.user import User
 from app.models.recipe import Recipe, Tag
-from app.models.ingredient import Ingredient, IngredientSubstitute
+from app.models.ingredient import Ingredient, IngredientSubstitute, RecipeIngredient
 from app.models.rating import Rating, ViewHistory
 from app.utils.response import success_response, error_response
 from app.utils.decorators import admin_required
@@ -104,6 +104,61 @@ def create_ingredient():
     db.session.commit()
 
     return success_response(data=ing.to_dict(), message="Tạo nguyên liệu thành công", status_code=201)
+
+
+@admin_bp.route("/ingredients/<int:ingredient_id>", methods=["PUT"])
+@admin_required
+def update_ingredient(ingredient_id):
+    """
+    PUT /api/admin/ingredients/:id
+    Body: { "name": "...", "category": "...", "unit": "...", "emoji": "...", "calories_per_100g": 45 }
+    """
+    ing = Ingredient.query.get(ingredient_id)
+    if not ing:
+        return error_response("Nguyên liệu không tồn tại", 404)
+
+    data = request.get_json(silent=True) or {}
+    if "name" in data:
+        new_name = (data["name"] or "").strip()
+        if not new_name:
+            return error_response("Tên nguyên liệu không được để trống", 400)
+        dup = Ingredient.query.filter(Ingredient.name == new_name, Ingredient.id != ingredient_id).first()
+        if dup:
+            return error_response("Tên nguyên liệu đã tồn tại", 409)
+        ing.name = new_name
+
+    if "category" in data and data["category"]:
+        ing.category = data["category"]
+    if "unit" in data and data["unit"]:
+        ing.unit = data["unit"]
+    if "emoji" in data and data["emoji"]:
+        ing.emoji = data["emoji"]
+    if "calories_per_100g" in data:
+        try:
+            val = data["calories_per_100g"]
+            ing.calories_per_100g = float(val) if val not in [None, ""] else None
+        except (ValueError, TypeError):
+            pass
+
+    db.session.commit()
+    return success_response(data=ing.to_dict(), message="Cập nhật nguyên liệu thành công")
+
+
+@admin_bp.route("/ingredients/<int:ingredient_id>", methods=["DELETE"])
+@admin_required
+def delete_ingredient(ingredient_id):
+    """DELETE /api/admin/ingredients/:id"""
+    ing = Ingredient.query.get(ingredient_id)
+    if not ing:
+        return error_response("Nguyên liệu không tồn tại", 404)
+
+    usage_count = RecipeIngredient.query.filter_by(ingredient_id=ingredient_id).count()
+    if usage_count > 0:
+        return error_response(f"Không thể xóa vì nguyên liệu này đang có trong {usage_count} món ăn!", 400)
+
+    db.session.delete(ing)
+    db.session.commit()
+    return success_response(message=f"Đã xóa nguyên liệu '{ing.name}' thành công")
 
 
 @admin_bp.route("/tags", methods=["POST"])

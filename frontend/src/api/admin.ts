@@ -102,4 +102,40 @@ export const adminApi = {
     const res = await apiClient.post(`/admin/recipes/${id}/set-primary`, { slot });
     return res.data;
   },
+
+  getRecipeDetail: async (id: number) => {
+    const res = await apiClient.get(`/admin/recipes/${id}`);
+    return res.data;
+  },
+
+  createIngredient: async (payload: {
+    name: string;
+    category: string;
+    unit: string;
+    emoji: string;
+    calories_per_100g?: number | null;
+  }) => {
+    const res = await apiClient.post('/admin/ingredients', payload);
+    return res.data;
+  },
+
+  updateIngredient: async (
+    id: number,
+    payload: Partial<{
+      name: string;
+      category: string;
+      unit: string;
+      emoji: string;
+      calories_per_100g?: number | null;
+    }>
+  ) => {
+    const res = await apiClient.put(`/admin/ingredients/${id}`, payload);
+    return res.data;
+  },
+
+  deleteIngredient: async (id: number) => {
+    const res = await apiClient.delete(`/admin/ingredients/${id}`);
+    return res.data;
+  },
 };
+

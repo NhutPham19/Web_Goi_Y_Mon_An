@@ -511,6 +511,58 @@ def run_tests():
         else:
             record_fail("Admin", "Ẩn/Hiện công thức", f"{toggle_res.status_code}")
 
+        # Test GET /api/admin/recipes/<id>
+        get_rec_res = client.get(f"/api/admin/recipes/{sample_recipe_id}", headers=admin_headers)
+        if get_rec_res.status_code == 200 and get_rec_res.json.get("success"):
+            rec_detail = get_rec_res.json.get("data", {})
+            record_pass("Admin", f"Lấy chi tiết món GET /api/admin/recipes/{sample_recipe_id}", f"Tên: {rec_detail.get('name')}, Nguyên liệu: {len(rec_detail.get('ingredients', []))}, Bước: {len(rec_detail.get('steps', []))}")
+        else:
+            record_fail("Admin", "Lấy chi tiết món admin", f"{get_rec_res.status_code}")
+
+        # Test PUT /api/admin/recipes/<id> (Update recipe details)
+        update_rec_res = client.put(
+            f"/api/admin/recipes/{sample_recipe_id}",
+            json={"description": "Mô tả test cập nhật bởi Admin"},
+            headers=admin_headers,
+        )
+        if update_rec_res.status_code == 200 and update_rec_res.json.get("success"):
+            record_pass("Admin", f"Chỉnh sửa chi tiết món PUT /api/admin/recipes/{sample_recipe_id}", "Cập nhật thành công")
+        else:
+            record_fail("Admin", "Chỉnh sửa chi tiết món", f"{update_rec_res.status_code}")
+
+        # Test CRUD Ingredient: POST /api/admin/ingredients
+        test_ing_name = "Muối Tây Ninh Test Admin"
+        create_ing_res = client.post(
+            "/api/admin/ingredients",
+            json={"name": test_ing_name, "category": "gia_vi", "unit": "g", "emoji": "🧂", "calories_per_100g": 12},
+            headers=admin_headers,
+        )
+        created_ing_id = None
+        if create_ing_res.status_code == 201 and create_ing_res.json.get("success"):
+            created_ing_id = create_ing_res.json.get("data", {}).get("id")
+            record_pass("Admin", "Tạo nguyên liệu mới POST /api/admin/ingredients", f"ID: {created_ing_id}, Tên: {test_ing_name}")
+        else:
+            record_fail("Admin", "Tạo nguyên liệu mới", f"{create_ing_res.status_code}: {create_ing_res.json}")
+
+        # Test PUT /api/admin/ingredients/<id>
+        if created_ing_id:
+            update_ing_res = client.put(
+                f"/api/admin/ingredients/{created_ing_id}",
+                json={"name": f"{test_ing_name} (Đã Sửa)", "calories_per_100g": 15},
+                headers=admin_headers,
+            )
+            if update_ing_res.status_code == 200 and update_ing_res.json.get("success"):
+                record_pass("Admin", f"Cập nhật nguyên liệu PUT /api/admin/ingredients/{created_ing_id}", "Cập nhật thành công")
+            else:
+                record_fail("Admin", "Cập nhật nguyên liệu", f"{update_ing_res.status_code}")
+
+            # Test DELETE /api/admin/ingredients/<id>
+            del_ing_res = client.delete(f"/api/admin/ingredients/{created_ing_id}", headers=admin_headers)
+            if del_ing_res.status_code == 200 and del_ing_res.json.get("success"):
+                record_pass("Admin", f"Xóa nguyên liệu DELETE /api/admin/ingredients/{created_ing_id}", "Xóa thành công")
+            else:
+                record_fail("Admin", "Xóa nguyên liệu", f"{del_ing_res.status_code}")
+
         # Clean up test user
         if test_user_id:
             u = User.query.get(test_user_id)

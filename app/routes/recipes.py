@@ -159,6 +159,16 @@ def create_recipe():
     )
 
 
+@recipes_bp.route("/admin/recipes/<int:recipe_id>", methods=["GET"])
+@admin_required
+def get_admin_recipe(recipe_id):
+    """GET /api/admin/recipes/:id — Lấy chi tiết công thức phục vụ chỉnh sửa (kể cả draft)."""
+    recipe = Recipe.query.get(recipe_id)
+    if not recipe:
+        return error_response("Công thức không tồn tại", 404)
+    return success_response(data=recipe.to_dict_detail())
+
+
 @recipes_bp.route("/admin/recipes/<int:recipe_id>", methods=["PUT"])
 @admin_required
 def update_recipe(recipe_id):

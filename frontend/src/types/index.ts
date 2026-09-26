@@ -25,10 +25,22 @@ export interface Tag {
 export interface Ingredient {
   id: number;
   name: string;
-  category: 'rau_cu' | 'thit' | 'hai_san' | 'gia_vi' | 'khac';
+  category:
+    | 'rau_cu'
+    | 'thit'
+    | 'hai_san'
+    | 'gia_vi'
+    | 'sua_trung'
+    | 'bot_duong'
+    | 'nuoc_sot'
+    | 'trai_cay'
+    | 'do_kho'
+    | 'hat'
+    | 'khac'
+    | string;
   unit: string;
   emoji: string;
-  calories_per_100g: number;
+  calories_per_100g?: number | null;
 }
 
 export interface RecipeIngredient {

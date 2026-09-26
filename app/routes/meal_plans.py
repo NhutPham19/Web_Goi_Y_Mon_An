@@ -38,12 +38,14 @@ def get_meal_plan():
     Trả về thực đơn tuần của user.
     """
     user_id = get_jwt_identity()
-    week_start_str = request.args.get("week_start", "")
+    week_start_str = request.args.get("week_start") or request.args.get("start_date") or ""
 
     try:
-        week_start = date.fromisoformat(week_start_str) if week_start_str else date.today()
+        target_date = date.fromisoformat(week_start_str) if week_start_str else date.today()
+        # Chuẩn hóa về Thứ 2 đầu tuần (0=Monday) để luôn khớp với week_start khi thêm món
+        week_start = target_date - timedelta(days=target_date.weekday())
     except ValueError:
-        return error_response("week_start không hợp lệ, dùng định dạng YYYY-MM-DD", 400)
+        return error_response("week_start hoặc start_date không hợp lệ, dùng định dạng YYYY-MM-DD", 400)
 
     plans = (
         MealPlan.query
@@ -153,12 +155,13 @@ def get_shopping_list():
     Tổng hợp nguyên liệu cần mua trong tuần.
     """
     user_id = get_jwt_identity()
-    week_start_str = request.args.get("week_start", "")
+    week_start_str = request.args.get("week_start") or request.args.get("start_date") or ""
 
     try:
-        week_start = date.fromisoformat(week_start_str) if week_start_str else date.today()
+        target_date = date.fromisoformat(week_start_str) if week_start_str else date.today()
+        week_start = target_date - timedelta(days=target_date.weekday())
     except ValueError:
-        return error_response("week_start không hợp lệ", 400)
+        return error_response("week_start hoặc start_date không hợp lệ, dùng định dạng YYYY-MM-DD", 400)
 
     # Lấy tất cả recipe_id trong tuần
     plans = MealPlan.query.filter_by(user_id=user_id, week_start=week_start).all()

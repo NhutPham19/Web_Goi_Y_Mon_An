@@ -119,9 +119,12 @@ class IngredientSubstitute(db.Model):
         sub = self.substitute_ingredient
         return {
             "id": sub.id if sub else None,
+            "original_id": self.ingredient_id,
+            "substitute_id": self.substitute_id,
             "name": sub.name if sub else None,
             "substitute_name": sub.name if sub else None,  # alias cho Frontend
             "emoji": sub.emoji if sub else None,
+            "ratio": 1.0,
             "note": self.note,
         }
 

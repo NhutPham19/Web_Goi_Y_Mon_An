@@ -91,7 +91,7 @@ export const SubstituteModal: React.FC<SubstituteModalProps> = ({
                     </span>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-100 text-brand-700">
-                    Tỷ lệ: {sub.ratio}:1
+                    Tỷ lệ: {sub.ratio || 1}:1
                   </span>
                 </div>
                 {sub.note && (

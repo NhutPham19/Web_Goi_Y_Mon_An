@@ -17,19 +17,20 @@ def init_cloudinary():
     )
 
 
-def upload_recipe_image(file_obj, recipe_id: int) -> dict:
+def upload_recipe_image(file_obj, recipe_id: int, slot: int = 1) -> dict:
     """
     Upload ảnh công thức lên Cloudinary.
     
     Args:
         file_obj: File object từ request.files
         recipe_id: ID của recipe (dùng làm public_id)
+        slot: Slot 1 (ảnh chính) hoặc Slot 2 (ảnh dự phòng)
     
     Returns:
         {
-            "url": "https://res.cloudinary.com/.../recipe_xxx.jpg",
-            "thumbnail_url": "https://res.cloudinary.com/.../w_400,h_300,.../recipe_xxx.jpg",
-            "public_id": "nauan/recipes/recipe_15"
+            "url": "https://res.cloudinary.com/.../recipe_xxx_slot1.jpg",
+            "thumbnail_url": "https://res.cloudinary.com/.../w_400,h_300,.../recipe_xxx_slot1.jpg",
+            "public_id": "nauan/recipes/recipe_15_slot1"
         }
     
     Raises:
@@ -37,7 +38,7 @@ def upload_recipe_image(file_obj, recipe_id: int) -> dict:
     """
     init_cloudinary()
 
-    public_id = f"nauan/recipes/recipe_{recipe_id}"
+    public_id = f"nauan/recipes/recipe_{recipe_id}_slot{slot}"
 
     result = cloudinary.uploader.upload(
         file_obj,

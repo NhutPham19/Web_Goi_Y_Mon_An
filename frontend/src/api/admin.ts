@@ -83,13 +83,10 @@ export const adminApi = {
 
   uploadImageFile: async (id: number, file: File, slot: 1 | 2 = 1) => {
     const formData = new FormData();
+    formData.append('file', file);
     formData.append('image', file);
     formData.append('slot', slot.toString());
-    const res = await apiClient.post(`/admin/recipes/${id}/image`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const res = await apiClient.post(`/admin/recipes/${id}/image`, formData);
     return res.data;
   },
 

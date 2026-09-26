@@ -249,39 +249,62 @@ def upload_recipe_image(recipe_id):
 
     # Xác định slot (1: ảnh chính, 2: ảnh dự phòng)
     slot = 1
-    raw_slot = request.form.get("slot") or (request.get_json(silent=True) or {}).get("slot")
+    raw_slot = request.form.get("slot") or request.args.get("slot") or (request.get_json(silent=True) or {}).get("slot")
     if str(raw_slot).strip().lower() in ["2", "slot2", "backup", "secondary"]:
         slot = 2
 
     saved_url = None
 
-    # TH1: Tải file ảnh trực tiếp từ máy tính
-    if "file" in request.files and request.files["file"].filename != "":
-        file = request.files["file"]
-        ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
-        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    # TH1: Tải file ảnh trực tiếp từ máy tính (hỗ trợ cả field name 'file' và 'image')
+    uploaded_file = request.files.get("file") or request.files.get("image")
+    if uploaded_file and uploaded_file.filename != "":
+        ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "avif"}
+        ext = uploaded_file.filename.rsplit(".", 1)[-1].lower() if "." in uploaded_file.filename else "jpg"
         if ext not in ALLOWED_EXTENSIONS:
             return error_response(f"Chỉ chấp nhận file ảnh: {ALLOWED_EXTENSIONS}", 400)
 
         # Chuẩn hóa tên file sạch không dấu tiếng Việt
         norm_filename = generate_normalized_filename(recipe.id, recipe.name, slot, ext)
 
-        # Lưu vào thư mục frontend/public/recipes
-        target_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "recipes"))
-        os.makedirs(target_dir, exist_ok=True)
-        target_path = os.path.join(target_dir, norm_filename)
-        file.save(target_path)
+        # 1. Thử upload lên Cloudinary nếu có credentials (ưu tiên cao cho Production Render/Cloud)
+        from flask import current_app
+        has_cloudinary = bool(
+            current_app.config.get("CLOUDINARY_CLOUD_NAME") and
+            current_app.config.get("CLOUDINARY_API_KEY") and
+            current_app.config.get("CLOUDINARY_API_SECRET")
+        )
 
-        # Đồng bộ vào frontend/dist/recipes nếu tồn tại
-        dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist", "recipes"))
-        if os.path.exists(dist_dir):
+        if has_cloudinary:
             try:
-                import shutil
-                shutil.copy2(target_path, os.path.join(dist_dir, norm_filename))
-            except Exception:
-                pass
+                from app.services.cloudinary_service import upload_recipe_image as upload_to_cloud
+                uploaded_file.seek(0)
+                cloud_res = upload_to_cloud(uploaded_file, recipe.id, slot=slot)
+                if cloud_res and cloud_res.get("url"):
+                    saved_url = cloud_res["url"]
+            except Exception as e:
+                current_app.logger.warning(f"Cloudinary upload failed: {e}. Falling back to local storage.")
 
-        saved_url = f"/recipes/{norm_filename}"
+        # 2. Nếu không dùng Cloudinary hoặc Cloudinary lỗi, lưu vào local disk
+        if not saved_url:
+            try:
+                target_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "recipes"))
+                os.makedirs(target_dir, exist_ok=True)
+                target_path = os.path.join(target_dir, norm_filename)
+                uploaded_file.seek(0)
+                uploaded_file.save(target_path)
+
+                # Đồng bộ vào frontend/dist/recipes nếu thư mục build tồn tại
+                dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist", "recipes"))
+                if os.path.exists(dist_dir):
+                    try:
+                        import shutil
+                        shutil.copy2(target_path, os.path.join(dist_dir, norm_filename))
+                    except Exception:
+                        pass
+
+                saved_url = f"/recipes/{norm_filename}"
+            except Exception as e:
+                return error_response(f"Lỗi khi lưu file lên server: {str(e)}", 500)
 
     # TH2: Dán đường link ảnh trực tuyến (Image URL)
     elif request.form.get("image_url") or (request.get_json(silent=True) or {}).get("image_url"):

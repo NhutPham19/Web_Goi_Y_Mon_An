@@ -4,7 +4,7 @@ import { MealPlanItem, ShoppingListItem } from '../types';
 export const mealPlansApi = {
   getAll: async (startDate?: string, endDate?: string) => {
     const res = await apiClient.get('/meal-plans', {
-      params: { start_date: startDate, end_date: endDate },
+      params: { week_start: startDate, start_date: startDate, end_date: endDate },
     });
     return res.data;
   },
@@ -26,7 +26,7 @@ export const mealPlansApi = {
 
   getShoppingList: async (startDate?: string, endDate?: string) => {
     const res = await apiClient.get('/meal-plans/shopping-list', {
-      params: { start_date: startDate, end_date: endDate },
+      params: { week_start: startDate, start_date: startDate, end_date: endDate },
     });
     return res.data;
   },

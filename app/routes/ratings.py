@@ -77,27 +77,35 @@ def create_rating_for_recipe(recipe_id):
 
 
 @ratings_bp.route("/view-history", methods=["POST"])
-@jwt_required_custom
 def record_view():
     """
     POST /api/view-history
     Body: { "recipe_id": 15, "duration_sec": 120 }
-    Fire-and-forget: luôn trả 200, lỗi cũng không báo.
+    Fire-and-forget: luôn trả 200, hỗ trợ cả khách vãng lai (optional JWT).
     """
-    user_id = get_jwt_identity()
+    user_id = None
+    try:
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+    except Exception:
+        user_id = None
     data = request.get_json(silent=True) or {}
     return _do_record_view(user_id, data.get("recipe_id"), data.get("duration_sec"))
 
 
 @ratings_bp.route("/recipes/<int:recipe_id>/views", methods=["POST"])
-@jwt_required_custom
 def record_view_for_recipe(recipe_id):
     """
     POST /api/recipes/:id/views    ← alias được Frontend gọi
     Body: { "duration_sec": 120 }  (recipe_id lấy từ URL)
-    Fire-and-forget: luôn trả 200.
+    Fire-and-forget: luôn trả 200, hỗ trợ cả khách vãng lai (optional JWT).
     """
-    user_id = get_jwt_identity()
+    user_id = None
+    try:
+        verify_jwt_in_request(optional=True)
+        user_id = get_jwt_identity()
+    except Exception:
+        user_id = None
     data = request.get_json(silent=True) or {}
     return _do_record_view(user_id, recipe_id, data.get("duration_sec"))
 
@@ -162,7 +170,7 @@ def _do_create_rating(user_id: str, data: dict):
 
 def _do_record_view(user_id: str, recipe_id, duration_sec):
     """Xử lý logic ghi view history — dùng chung cho cả 2 route POST view."""
-    if recipe_id:
+    if recipe_id and user_id:
         try:
             vh = ViewHistory(
                 user_id=user_id,

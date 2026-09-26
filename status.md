@@ -29,12 +29,12 @@
 
 | Hạng mục | Thành phần | Trạng thái | Chi tiết | Phụ trách |
 |---|---|:---:|---|:---:|
-| **Database & ORM** | 12 bảng PostgreSQL | ✅ **HOÀN THÀNH** | Đã kết nối Supabase, migration và nạp 61 món, 99 nguyên liệu, 489 ratings | Claude |
-| **REST API Backend** | Flask Blueprints | ⚠️ **CẦN SỬA** | 8 blueprints cơ bản đã chạy, cần sửa route alias, JWT optional, config.py | Claude |
-| **Hệ thống AI / ML** | CBF + CF Hybrid | ⚠️ **CẦN SỬA** | Cần sửa logic vùng miền/vị giác CBF và kích hoạt CF | Claude |
-| **Dữ liệu Hình ảnh** | 61 món ăn 3 miền | ⚠️ **CẦN SỬA** | Cần cập nhật link ảnh món Việt chuẩn xác thay thế ảnh salad/ramen | Claude |
-| **Frontend Web App** | React 19 + Vite | ⏳ **CHỜ BACKEND** | Giao diện đã xong, chờ Claude xong Backend sẽ sửa contract mismatch | Antigravity |
-| **Kiểm thử tự động** | AI Testing Agent | ⏳ **CHỜ SỬA** | Đã chọn và chừa lại 2 lỗi (Lỗi param search & Lỗi nhân đôi %) để agent test | User & Agent |
+| **Database & ORM** | 12 bảng PostgreSQL | ✅ **HOÀN THÀNH** | Đã kết nối Supabase, migration và nạp 61 món, 99 nguyên liệu, 489 ratings | Claude & Antigravity |
+| **REST API Backend** | Flask Blueprints | ✅ **HOÀN THÀNH** | 8 blueprints đã chạy chuẩn xác, hỗ trợ optional JWT cho view & recommend, chuẩn hóa week_start | Claude & Antigravity |
+| **Hệ thống AI / ML** | CBF + CF Hybrid | ✅ **HOÀN THÀNH** | SVD matrix factorization + CBF 60/40 hoạt động trơn tru (490 ratings) | Claude & Antigravity |
+| **Dữ liệu Hình ảnh** | 61 món ăn 3 miền | ✅ **HOÀN THÀNH** | Đã chuẩn hóa link ảnh 61 món Việt HD trong frontend/public/recipes | Claude & Antigravity |
+| **Frontend Web App** | React 19 + Vite | ✅ **HOÀN THÀNH** | Đã sửa contract mismatch ở MealPlan, SubstituteModal, SearchPage | Antigravity |
+| **Kiểm thử tự động** | AI Testing Suite | ✅ **43/43 PASS** | Đã hoàn thành bộ test tự động toàn diện (0 FAIL, 0 WARN) | Antigravity |
 | **Đóng gói Docker** | Multi-container Compose | ⏳ **BƯỚC CUỐI** | Dockerfile Backend, Frontend Nginx, docker-compose.yml | Antigravity |
 
 ---

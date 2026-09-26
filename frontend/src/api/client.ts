@@ -10,11 +10,15 @@ export const apiClient = axios.create({
   },
 });
 
-// Attach JWT token automatically
+// Attach JWT token automatically & handle FormData boundary
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Nếu request payload là FormData, xóa Content-Type để browser/Axios tự động gán multipart boundary
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 });

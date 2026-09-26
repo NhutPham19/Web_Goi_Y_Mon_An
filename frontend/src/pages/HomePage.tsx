@@ -16,9 +16,114 @@ import {
   Filter, 
   Utensils,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RotateCcw,
+  CheckCircle2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+
+interface CollectionItem {
+  id: string;
+  title: string;
+  description: string;
+  badge?: string;
+  colSpan: string;
+  filterType: 'region' | 'difficulty' | 'search' | 'all';
+  value: string;
+  icon: React.ReactNode;
+  imageUrl: string;
+}
+
+const FEATURED_COLLECTIONS: CollectionItem[] = [
+  {
+    id: 'mien_nam',
+    title: 'Đặc Sản Miền Nam Nồng Nàn',
+    description: 'Cơm tấm sườn bì chả, Canh chua cá lóc, Cá kho tộ, Bánh xèo miền Tây đậm vị ngọt béo khó quên.',
+    badge: 'Top Yêu Thích',
+    colSpan: 'md:col-span-2',
+    filterType: 'region',
+    value: 'mien_nam',
+    icon: <ChefHat className="w-4 h-4 text-orange-500" />,
+    imageUrl: 'https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'mien_bac',
+    title: 'Tinh Hoa Vị Bắc Thanh Tao',
+    description: 'Phở bò Hà Nội, Bún chả nướng than hoa, Nem rán vàng ươm chuẩn phong vị Thăng Long.',
+    badge: 'Truyền Thống',
+    colSpan: 'md:col-span-1',
+    filterType: 'region',
+    value: 'mien_bac',
+    icon: <Sparkles className="w-4 h-4 text-amber-500" />,
+    imageUrl: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'easy',
+    title: 'Món Nhanh Dưới 30 Phút',
+    description: 'Dành cho ngày bận rộn: Trứng chiên cà chua, Bò xào hành tây, Tôm rang mặn ngọt nhanh gọn.',
+    badge: 'Tiện Lợi',
+    colSpan: 'md:col-span-1',
+    filterType: 'difficulty',
+    value: 'easy',
+    icon: <Clock className="w-4 h-4 text-emerald-500" />,
+    imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'mien_trung',
+    title: 'Đậm Đà Đất Miền Trung',
+    description: 'Bún bò xứ Huế cay nồng, Mì Quảng tôm thịt đậm vị, Cao lầu Hội An trứ danh.',
+    badge: 'Cay Nồng',
+    colSpan: 'md:col-span-2',
+    filterType: 'region',
+    value: 'mien_trung',
+    icon: <Flame className="w-4 h-4 text-rose-500" />,
+    imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'canh',
+    title: 'Món Canh Thanh Mát Giải Nhiệt',
+    description: 'Canh chua cá lóc miền Tây, Canh nghêu dứa thì là chua dịu, Canh cà chua trứng thanh ngọt.',
+    badge: 'Giải Nhiệt',
+    colSpan: 'md:col-span-2',
+    filterType: 'search',
+    value: 'canh',
+    icon: <Utensils className="w-4 h-4 text-teal-500" />,
+    imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'kho',
+    title: 'Món Kho Đậm Đà Hao Cơm',
+    description: 'Thịt kho tàu nước dừa óng ả, Cá basa kho tộ béo ngậy, Cá thu kho tiêu thơm nức mũi.',
+    badge: 'Hao Cơm',
+    colSpan: 'md:col-span-1',
+    filterType: 'search',
+    value: 'kho',
+    icon: <Flame className="w-4 h-4 text-amber-600" />,
+    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'xao',
+    title: 'Xào & Chiên Giòn Rụm Hấp Dẫn',
+    description: 'Mực xào cần tây sốt chua ngọt, Cá diêu hồng chiên xù vàng ruộm, Gà chiên nước mắm thơm lừng.',
+    badge: 'Giòn Thơm',
+    colSpan: 'md:col-span-1',
+    filterType: 'search',
+    value: 'xào',
+    icon: <Sparkles className="w-4 h-4 text-yellow-500" />,
+    imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 'chao',
+    title: 'Cháo Dinh Dưỡng & Dễ Tiêu',
+    description: 'Cháo sườn nóng hổi ấm bụng ngày mưa, Cháo thịt bò bằm gừng giải cảm bồi bổ sức khỏe.',
+    badge: 'Thanh Nhẹ',
+    colSpan: 'md:col-span-2',
+    filterType: 'search',
+    value: 'cháo',
+    icon: <ChefHat className="w-4 h-4 text-emerald-600" />,
+    imageUrl: 'https://images.unsplash.com/photo-1505253758473-96b3015f27eb?auto=format&fit=crop&w=800&q=80',
+  },
+];
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +132,7 @@ export const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [activeCollection, setActiveCollection] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [limit] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
@@ -59,19 +165,67 @@ export const HomePage: React.FC = () => {
     fetchRecipes();
   }, [selectedRegion, selectedDifficulty, searchQuery, page]);
 
+  const scrollToRecipes = () => {
+    setTimeout(() => {
+      const el = document.getElementById('recipes-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
+  const handleSelectCollection = (
+    collectionId: string,
+    filterType: 'region' | 'difficulty' | 'search' | 'all',
+    value: string
+  ) => {
+    setActiveCollection(collectionId);
+    setPage(1);
+
+    if (filterType === 'region') {
+      setSelectedRegion(value);
+      setSelectedDifficulty('all');
+      setSearchQuery('');
+    } else if (filterType === 'difficulty') {
+      setSelectedDifficulty(value);
+      setSelectedRegion('all');
+      setSearchQuery('');
+    } else if (filterType === 'search') {
+      setSearchQuery(value);
+      setSelectedRegion('all');
+      setSelectedDifficulty('all');
+    } else {
+      setSelectedRegion('all');
+      setSelectedDifficulty('all');
+      setSearchQuery('');
+    }
+
+    scrollToRecipes();
+  };
+
+  const resetAllFilters = () => {
+    setActiveCollection('all');
+    setSelectedRegion('all');
+    setSelectedDifficulty('all');
+    setSearchQuery('');
+    setPage(1);
+  };
+
   const handleRegionChange = (reg: string) => {
     setSelectedRegion(reg);
+    setActiveCollection(reg === 'all' ? 'all' : reg);
     setPage(1);
   };
 
   const handleDifficultyChange = (diff: string) => {
     setSelectedDifficulty(diff);
+    setActiveCollection(diff === 'all' ? 'all' : diff);
     setPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    document.getElementById('recipes-section')?.scrollIntoView({ behavior: 'smooth' });
+    scrollToRecipes();
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -158,86 +312,72 @@ export const HomePage: React.FC = () => {
 
       {/* 21st.dev BENTO GRID DISCOVERY */}
       <section className="container mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-600 uppercase tracking-widest">
-              <Compass className="w-3.5 h-3.5" /> Khám phá nhanh
+              <Compass className="w-3.5 h-3.5" /> Khám phá nhanh theo chủ đề
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 font-heading">
+            <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 font-heading mt-1">
               Góc Ẩm Thực Chọn Lọc
             </h2>
+            <p className="text-xs sm:text-sm text-neutral-500 mt-1">
+              Nhấp vào chủ đề bất kỳ để lọc công thức và tự động cuộn đến danh sách món ăn phù hợp
+            </p>
           </div>
+
+          {activeCollection !== 'all' && (
+            <button
+              onClick={resetAllFilters}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-brand-600 bg-brand-50 hover:bg-brand-100 border border-brand-200 rounded-xl transition shadow-xs self-start sm:self-auto cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Xem tất cả (Bỏ lọc)</span>
+            </button>
+          )}
         </div>
 
         <BentoGrid className="max-w-7xl">
-          <BentoGridItem
-            title="Đặc Sản Miền Nam Nồng Nàn"
-            description="Cơm tấm sườn bì chả, Canh chua cá lóc, Cá kho tộ, Bánh xèo miền Tây đậm vị ngọt béo."
-            badge="Top Yêu Thích"
-            className="md:col-span-2"
-            onClick={() => setSelectedRegion('mien_nam')}
-            icon={<ChefHat className="w-4 h-4 text-brand-500" />}
-            header={
-              <img
-                src="https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=800&q=80"
-                alt="Miền Nam"
-                className="w-full h-full object-cover"
+          {FEATURED_COLLECTIONS.map((item) => {
+            const isSelected = activeCollection === item.id;
+            return (
+              <BentoGridItem
+                key={item.id}
+                title={item.title}
+                description={item.description}
+                badge={item.badge}
+                className={`${item.colSpan} transition-all duration-300 relative group/bento ${
+                  isSelected
+                    ? 'ring-4 ring-brand-500/40 border-brand-500 bg-orange-50/20 shadow-xl scale-[1.01]'
+                    : 'hover:border-brand-200 hover:shadow-lg'
+                }`}
+                onClick={() => handleSelectCollection(item.id, item.filterType, item.value)}
+                icon={item.icon}
+                header={
+                  <div className="relative w-full h-full overflow-hidden rounded-xl">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover/bento:scale-105 transition duration-500"
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-brand-600/20 backdrop-blur-[1px] flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-600 text-white text-xs font-bold rounded-full shadow-lg">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Đang lọc danh sách
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                }
               />
-            }
-          />
-
-          <BentoGridItem
-            title="Tinh Hoa Vị Bắc"
-            description="Phở bò truyền thống, Bún chả than hoa nướng, Bún thang thanh tao."
-            className="md:col-span-1"
-            onClick={() => setSelectedRegion('mien_bac')}
-            icon={<Sparkles className="w-4 h-4 text-amber-500" />}
-            header={
-              <img
-                src="https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?auto=format&fit=crop&w=800&q=80"
-                alt="Miền Bắc"
-                className="w-full h-full object-cover"
-              />
-            }
-          />
-
-          <BentoGridItem
-            title="Món Nhanh Dưới 30 Phút"
-            description="Dành cho những ngày bận rộn: Trứng chiên cà chua, Bò xào, Tôm rang mặn ngọt."
-            badge="Tiện Lợi"
-            className="md:col-span-1"
-            onClick={() => setSelectedDifficulty('easy')}
-            icon={<Clock className="w-4 h-4 text-emerald-500" />}
-            header={
-              <img
-                src="https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80"
-                alt="Món Nhanh"
-                className="w-full h-full object-cover"
-              />
-            }
-          />
-
-          <BentoGridItem
-            title="Đậm Đà Đất Miền Trung"
-            description="Bún bò xứ Huế cay nồng, Mì Quảng đậm vị tôm thịt, Cao lầu Hội An trứ danh."
-            className="md:col-span-2"
-            onClick={() => setSelectedRegion('mien_trung')}
-            icon={<Flame className="w-4 h-4 text-rose-500" />}
-            header={
-              <img
-                src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80"
-                alt="Miền Trung"
-                className="w-full h-full object-cover"
-              />
-            }
-          />
+            );
+          })}
         </BentoGrid>
       </section>
 
       {/* RECIPES FILTER & LISTING */}
       <section id="recipes-section" className="container mx-auto px-4 pt-8">
         {/* Header & Filter Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-4 border-b border-neutral-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-200">
           <div>
             <h2 className="text-2xl font-bold text-neutral-900 font-heading">
               Tất Cả Công Thức Nấu Ăn
@@ -260,7 +400,7 @@ export const HomePage: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => handleRegionChange(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                     selectedRegion === tab.id
                       ? 'bg-white text-neutral-900 shadow-xs font-semibold'
                       : 'text-neutral-500 hover:text-neutral-800'
@@ -275,7 +415,7 @@ export const HomePage: React.FC = () => {
             <select
               value={selectedDifficulty}
               onChange={(e) => handleDifficultyChange(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-medium text-neutral-700 focus:outline-none focus:border-brand-500"
+              className="px-3 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-medium text-neutral-700 focus:outline-none focus:border-brand-500 cursor-pointer"
             >
               <option value="all">Độ khó: Tất cả</option>
               <option value="easy">Dễ nấu</option>
@@ -284,6 +424,39 @@ export const HomePage: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Active Filter Indicator */}
+        {(activeCollection !== 'all' || selectedRegion !== 'all' || selectedDifficulty !== 'all' || searchQuery.trim()) && (
+          <div className="flex items-center justify-between p-3.5 px-4 mb-6 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200/80 rounded-2xl shadow-xs animate-fade-in-up">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-800 flex-wrap">
+              <span className="inline-flex items-center gap-1 font-semibold text-brand-700">
+                <Filter className="w-4 h-4 text-brand-500" />
+                Đang lọc theo:
+              </span>
+              <span className="font-bold text-neutral-900 bg-white px-2.5 py-1 rounded-lg border border-orange-200 shadow-xs">
+                {FEATURED_COLLECTIONS.find((c) => c.id === activeCollection)?.title ||
+                  (selectedRegion !== 'all'
+                    ? selectedRegion === 'mien_bac'
+                      ? 'Đặc Sản Miền Bắc'
+                      : selectedRegion === 'mien_trung'
+                      ? 'Đặc Sản Miền Trung'
+                      : 'Đặc Sản Miền Nam'
+                    : '') ||
+                  (selectedDifficulty !== 'all'
+                    ? `Độ khó: ${selectedDifficulty === 'easy' ? 'Dễ nấu' : selectedDifficulty === 'medium' ? 'Trung bình' : 'Khó'}`
+                    : '') ||
+                  (searchQuery.trim() ? `Từ khóa: "${searchQuery}"` : 'Tùy chỉnh')}
+              </span>
+            </div>
+            <button
+              onClick={resetAllFilters}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-brand-700 hover:text-brand-900 bg-white hover:bg-orange-100/60 rounded-xl border border-orange-200 transition shadow-xs whitespace-nowrap ml-2 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Xóa bộ lọc</span>
+            </button>
+          </div>
+        )}
 
         {/* Recipe Grid */}
         {loading ? (

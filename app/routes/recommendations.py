@@ -73,6 +73,7 @@ def get_recommendations():
 
     except Exception as e:
         current_app.logger.error(f"[Recommendations] Error for user {user_id}: {e}")
+        db.session.rollback()
         return _fallback_popular(limit)
 
 
@@ -119,14 +120,14 @@ def _hybrid_recommendations(user_id: str, limit: int, force_refresh: bool = Fals
     if prefs:
         cbf_raw = _run_cbf(user_id, prefs, top_n=limit * 2)
         for recipe_id, score in cbf_raw:
-            cbf_results[recipe_id] = score
+            cbf_results[int(recipe_id)] = float(score)
 
     # Tính CF scores
     cf_results = {}
     cf_raw = compute_cf_recommendations(user_id, top_n=limit * 2)
     for recipe_id, score in cf_raw:
         # Normalize CF score: predict từ scale 1-5 → normalize về 0-1
-        cf_results[recipe_id] = (score - 1) / 4.0
+        cf_results[int(recipe_id)] = float((score - 1) / 4.0)
 
     # Merge: hybrid = 0.6*CBF + 0.4*CF
     all_ids = set(cbf_results.keys()) | set(cf_results.keys())
@@ -134,13 +135,13 @@ def _hybrid_recommendations(user_id: str, limit: int, force_refresh: bool = Fals
     for rid in all_ids:
         cbf_s = cbf_results.get(rid, 0.0)
         cf_s = cf_results.get(rid, 0.0)
-        hybrid_scores[rid] = 0.6 * cbf_s + 0.4 * cf_s
+        hybrid_scores[int(rid)] = float(0.6 * cbf_s + 0.4 * cf_s)
 
     if not hybrid_scores:
         return _fallback_popular_list(limit)
 
     # Sort và lấy top N
-    top_ids = sorted(hybrid_scores, key=lambda x: hybrid_scores[x], reverse=True)[:limit]
+    top_ids = [int(rid) for rid in sorted(hybrid_scores, key=lambda x: hybrid_scores[x], reverse=True)[:limit]]
 
     # Lưu cache hybrid
     _clear_user_cache(user_id, algorithm="hybrid")
@@ -148,8 +149,8 @@ def _hybrid_recommendations(user_id: str, limit: int, force_refresh: bool = Fals
     for rid in top_ids:
         db.session.add(RecommendationCache(
             user_id=user_id,
-            recipe_id=rid,
-            score=hybrid_scores[rid],
+            recipe_id=int(rid),
+            score=float(hybrid_scores[rid]),
             algorithm="hybrid",
         ))
     db.session.commit()

@@ -235,8 +235,8 @@ def _save_cache(user_id: str, recipe_scores: list, algorithm: str = "cbf"):
     for recipe_id, score in recipe_scores:
         cache_entry = RecommendationCache(
             user_id=user_id,
-            recipe_id=recipe_id,
-            score=score,
+            recipe_id=int(recipe_id),
+            score=float(score),
             algorithm=algorithm,
         )
         db.session.add(cache_entry)

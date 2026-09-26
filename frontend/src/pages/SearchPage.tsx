@@ -33,29 +33,6 @@ const PANTRY_STAPLE_NAMES = [
   'gạo tẻ',
 ];
 
-interface QuickFilterOption {
-  id: string;
-  label: string;
-  group: 'all' | 'region' | 'time' | 'type' | 'diet';
-  region?: string;
-  maxTime?: number;
-  keywordRegex?: RegExp;
-  tag?: string;
-}
-
-const QUICK_FILTERS: QuickFilterOption[] = [
-  { id: 'all', label: '✨ Tất cả', group: 'all' },
-  { id: 'mien_bac', label: '🌿 Miền Bắc', group: 'region', region: 'mien_bac' },
-  { id: 'mien_trung', label: '☀️ Miền Trung', group: 'region', region: 'mien_trung' },
-  { id: 'mien_nam', label: '🥥 Miền Nam', group: 'region', region: 'mien_nam' },
-  { id: 'quick', label: '⚡ Nấu nhanh (< 30p)', group: 'time', maxTime: 30 },
-  { id: 'canh', label: '🍲 Món Canh', group: 'type', keywordRegex: /canh|súp|riêu/i },
-  { id: 'kho', label: '🥘 Món Kho', group: 'type', keywordRegex: /kho|ram|om/i },
-  { id: 'xao_chien', label: '🍳 Xào & Chiên', group: 'type', keywordRegex: /xào|chiên|rang/i },
-  { id: 'healthy', label: '🥗 Eat Clean / Dễ tiêu', group: 'diet', tag: 'healthy' },
-  { id: 'spicy', label: '🌶️ Cay nồng', group: 'diet', tag: 'cay' },
-];
-
 export const SearchPage: React.FC = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -65,9 +42,6 @@ export const SearchPage: React.FC = () => {
   const [results, setResults] = useState<SearchByIngredientResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-
-  // Quick Option Filter State
-  const [selectedQuickFilter, setSelectedQuickFilter] = useState<string>('all');
 
   // Ref cuộn mượt xuống phần kết quả
   const resultsSectionRef = useRef<HTMLDivElement>(null);
@@ -134,18 +108,10 @@ export const SearchPage: React.FC = () => {
     }
   };
 
-  const handleSelectQuickFilter = (filterId: string) => {
-    setSelectedQuickFilter(filterId);
-    if (hasSearched && results.length > 0) {
-      scrollToResults();
-    }
-  };
-
   const clearAll = () => {
     setSelectedIds([]);
     setResults([]);
     setHasSearched(false);
-    setSelectedQuickFilter('all');
   };
 
   // Lọc nguyên liệu theo Category thông minh
@@ -182,27 +148,7 @@ export const SearchPage: React.FC = () => {
     return matchCategory && matchQuery;
   });
 
-  // Áp dụng Quick Filter lên danh sách kết quả món ăn
-  const activeFilterObj = QUICK_FILTERS.find((f) => f.id === selectedQuickFilter);
-  const displayedResults = results.filter((resItem) => {
-    if (!activeFilterObj || activeFilterObj.id === 'all') return true;
-
-    const r = resItem.recipe;
-    if (activeFilterObj.group === 'region' && activeFilterObj.region) {
-      return r.region === activeFilterObj.region;
-    }
-    if (activeFilterObj.group === 'time' && activeFilterObj.maxTime) {
-      return r.cook_time_min <= activeFilterObj.maxTime;
-    }
-    if (activeFilterObj.group === 'type' && activeFilterObj.keywordRegex) {
-      return activeFilterObj.keywordRegex.test(r.name) || activeFilterObj.keywordRegex.test(r.description || '');
-    }
-    if (activeFilterObj.group === 'diet' && activeFilterObj.tag) {
-      const tags = (r.tags || []).map((t: any) => (typeof t === 'string' ? t.toLowerCase() : t.name?.toLowerCase()));
-      return tags.includes(activeFilterObj.tag);
-    }
-    return true;
-  });
+  const displayedResults = results;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -218,43 +164,6 @@ export const SearchPage: React.FC = () => {
         <p className="text-sm text-neutral-600">
           Chỉ cần chọn <strong>Thịt</strong> hoặc <strong>Hải sản</strong> (kèm trứng) và <strong>Rau củ</strong>, hệ thống tự động kết hợp gia vị sẵn có để gợi ý ngay những món ngon nhất!
         </p>
-      </div>
-
-      {/* QUICK OPTIONS BAR TRÊN CÙNG */}
-      <div className="rounded-3xl bg-gradient-to-r from-orange-50/80 via-amber-50/80 to-orange-50/80 border border-orange-200/60 p-4 sm:p-5 shadow-xs space-y-2.5">
-        <div className="flex items-center justify-between text-xs font-bold text-neutral-700">
-          <span className="flex items-center gap-1.5 text-brand-800">
-            <Filter className="w-4 h-4 text-brand-600" />
-            Lọc Nhanh Theo Nhu Cầu Hôm Nay (Tự Động Cuộn Mượt):
-          </span>
-          {selectedQuickFilter !== 'all' && (
-            <button
-              onClick={() => setSelectedQuickFilter('all')}
-              className="text-[11px] text-neutral-400 hover:text-brand-600 underline font-normal transition"
-            >
-              Đặt lại
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {QUICK_FILTERS.map((f) => {
-            const isSelected = selectedQuickFilter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => handleSelectQuickFilter(f.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 shadow-2xs flex items-center gap-1 ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-brand-600 to-amber-500 text-white shadow-sm scale-105'
-                    : 'bg-white text-neutral-700 hover:bg-orange-100/60 hover:text-brand-700 border border-neutral-200/80'
-                }`}
-              >
-                <span>{f.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* PANTRY STAPLES NOTIFICATION BADGE */}
@@ -395,38 +304,27 @@ export const SearchPage: React.FC = () => {
               </div>
               <p className="text-xs text-neutral-500 mt-1">
                 Ưu tiên các món có nguyên liệu đạm chính & độ khớp cao nhất
-                {selectedQuickFilter !== 'all' && (
-                  <span className="font-semibold text-brand-700 ml-1">
-                    (Đang lọc: {activeFilterObj?.label})
-                  </span>
-                )}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-orange-100 text-brand-700 font-bold text-xs">
-                {displayedResults.length} / {results.length} món phù hợp
+                {results.length} món phù hợp
               </span>
             </div>
           </div>
 
-          {displayedResults.length === 0 ? (
+          {results.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-3xl border border-neutral-100 p-8">
               <AlertCircle className="w-12 h-12 text-neutral-300 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-neutral-800">Không tìm thấy món phù hợp với bộ lọc hiện tại</h3>
+              <h3 className="text-lg font-bold text-neutral-800">Không tìm thấy món phù hợp với các nguyên liệu đã chọn</h3>
               <p className="text-sm text-neutral-500 mt-1">
-                Hãy thử đổi sang bộ lọc khác hoặc chọn thêm nguyên liệu đạm/rau củ khác.
+                Hãy thử chọn thêm nguyên liệu đạm chính hoặc rau củ khác để nhận gợi ý nấu ăn nhé!
               </p>
-              <button
-                onClick={() => setSelectedQuickFilter('all')}
-                className="mt-4 px-4 py-2 rounded-xl bg-orange-100 text-brand-700 font-bold text-xs hover:bg-orange-200 transition"
-              >
-                Xem tất cả {results.length} món nấu được
-              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedResults.map((resItem) => {
+              {results.map((resItem) => {
                 const percent = Math.min(100, Math.max(0, Math.round(resItem.match_percent)));
                 return (
                   <div
